@@ -2,28 +2,16 @@ package main
 
 import (
 	"fmt"
+	interfaces "main/interface"
+	"main/models"
 	"main/parser"
 	"os"
-	"os/exec"
 
 	tea "charm.land/bubbletea/v2"
 )
 
 type MainModel struct {
-	inputs  Inputs
-	output  Output
-	process *exec.Cmd
-	cursor  int
-}
-
-type Inputs struct {
-	inputs   []string
-	selected int
-}
-
-type Output struct {
-	output   []string
-	selected int
+	models.MainModel
 }
 
 func initialModel() MainModel {
@@ -38,15 +26,29 @@ func initialModel() MainModel {
 	}
 
 	return MainModel{
-		cursor: 0,
-
-		inputs: Inputs{
-			inputs: inputsList,
-		},
-		output: Output{
-			output: outputList,
+		MainModel: models.MainModel{
+			Cursor: 0,
+			Input: models.Input{
+				Items: inputsList,
+			},
+			Output: models.Output{
+				Items: outputList,
+			},
 		},
 	}
+}
+func (m MainModel) refresLists() {
+	inputsList, err := parser.ReturnInputList()
+	if err != nil {
+		panic(err.Error())
+	}
+	outputList, err := parser.ReturnOuputList()
+	if err != nil {
+		panic(err.Error())
+	}
+
+	m.Input.Items = inputsList
+	m.Output.Items = outputList
 }
 
 func (m MainModel) Init() tea.Cmd {
@@ -57,47 +59,49 @@ func (m MainModel) Init() tea.Cmd {
 func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 
-	// Is it a key press?
+	// key press actions
 	case tea.KeyPressMsg:
-
-		// Cool, what was the actual key pressed?
 		switch msg.String() {
 
-		// These keys should exit the program.
+		// exit the program.
 		case "ctrl+c", "q":
-			if m.process.Process != nil {
-				m.process.Process.Kill()
+			if m.Process != nil && m.Process.Process != nil {
+				m.Process.Process.Kill()
 			}
 			return m, tea.Quit
 
 		// The "up" and "k" keys move the cursor up
 		case "up", "k":
-			if m.cursor > 0 {
-				m.cursor--
+			if m.Cursor > 0 {
+				m.Cursor--
 			}
 
-		case "m":
-			if m.process.Process != nil {
-				m.process.Process.Kill()
-				m.process = nil
+		// kill the currently proccess of playing
+		case "s":
+			if m.Process != nil && m.Process.Process != nil {
+				m.Process.Process.Kill()
+				m.Process = nil
 			}
+
+		case "r":
+			m.refresLists()
 
 		// The "down" and "j" keys move the cursor down
 		case "down", "j":
-			if m.cursor < (len(m.inputs.inputs) - 1 + len(m.output.output)) {
-				m.cursor++
+			if m.Cursor < (len(m.Input.Items) - 1 + len(m.Output.Items)) {
+				m.Cursor++
 			}
 
+		// Play the currently setup
 		case "p":
-			m.process = parser.Play(m.inputs.inputs[m.inputs.selected], m.output.output[m.output.selected])
+			m.Process = parser.Play(m.Input.Items[m.Input.Selected], m.Output.Items[m.Output.Selected])
 
 		// The "enter" key and the space bar toggle the selected state
-		// for the item that the cursor is pointing at.
 		case "enter", "space":
-			if m.cursor < len(m.inputs.inputs) {
-				m.inputs.selected = m.cursor
+			if m.Cursor < len(m.Input.Items) {
+				m.Input.Selected = m.Cursor
 			} else {
-				m.output.selected = m.cursor - len(m.inputs.inputs)
+				m.Output.Selected = m.Cursor - len(m.Input.Items)
 			}
 		}
 	}
@@ -108,66 +112,11 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m MainModel) View() tea.View {
-	s := ""
 
-	if m.process != nil {
-		s = "Playing \n\n "
-
-		s += fmt.Sprintf("Input: %s \n", m.inputs.inputs[m.inputs.selected])
-		s += fmt.Sprintf("Output: %s \n", m.output.output[m.output.selected])
-		s += "\n Press m to Stop \n"
-
-		return tea.NewView(s)
+	if m.Process != nil {
+		return tea.NewView(interfaces.Playing(m.MainModel))
 	}
-
-	// The header
-	s += "Select Input\n\n"
-
-	// Iterate over our choices
-	for i, choice := range m.inputs.inputs {
-
-		// Is the cursor pointing at this choice?
-		cursor := " " // no cursor
-		if m.cursor == i {
-			cursor = ">" // cursor!
-		}
-
-		// Is this choice selected?
-		checked := " " // not selected
-		if m.inputs.selected == i {
-			checked = "x" // selected!
-		}
-
-		// Render the row
-		s += fmt.Sprintf("%s [%s] %s\n", cursor, checked, choice)
-	}
-
-	s += "Select output\n\n"
-
-	for i, choice := range m.output.output {
-
-		// Is the cursor pointing at this choice?
-		cursor := " " // no cursor
-		if m.cursor == i+len(m.inputs.inputs) {
-			cursor = ">" // cursor!
-		}
-
-		// Is this choice selected?
-		checked := " " // not selected
-		if m.output.selected == i {
-			checked = "x" // selected!
-		}
-
-		// Render the row
-		s += fmt.Sprintf("%s [%s] %s\n", cursor, checked, choice)
-	}
-
-	// The footer
-	s += "\nPress p to play.\n"
-	s += "Press q to quit.\n"
-
-	// Send the UI for rendering
-	return tea.NewView(s)
+	return tea.NewView(interfaces.ListItems(m.MainModel))
 }
 
 func main() {
