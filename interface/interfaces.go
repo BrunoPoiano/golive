@@ -98,10 +98,11 @@ func generateMeter(peakLevel string) string {
 
 	var meter string
 
-	ruler := fmt.Sprintf("%s6%s12%s18%s24%s30%s36%s42%s48%s54",
+	ruler := fmt.Sprintf("%s6%s12%s18%s24%s30%s36%s42%s48%s54%s",
 		strings.Repeat("-", 5), strings.Repeat("-", 5), strings.Repeat("-", 4),
 		strings.Repeat("-", 4), strings.Repeat("-", 4), strings.Repeat("-", 4),
-		strings.Repeat("-", 4), strings.Repeat("-", 4), strings.Repeat("-", 4))
+		strings.Repeat("-", 4), strings.Repeat("-", 4), strings.Repeat("-", 4),
+		strings.Repeat("-", 6))
 
 	live := strings.Repeat("|", int(value))
 

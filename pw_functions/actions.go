@@ -52,7 +52,13 @@ func Play(input, output string) *exec.Cmd {
 
 func MonitorChanel(cmd *exec.Cmd, p *tea.Program, input string) {
 
-	cmd = exec.Command("ffmpeg", "-f", "pulse", "-i", input, "-af", "astats=metadata=1:reset=1,ametadata=print:key=lavfi.astats.Overall.Peak_level", "-f", "null", "-")
+	cmd = exec.Command(
+		"ffmpeg",
+		"-f", "pulse",
+		"-i", input,
+		"-af", "astats=metadata=1:reset=1,ametadata=print:key=lavfi.astats.Overall.Peak_level",
+		"-f", "null",
+		"-")
 
 	output, err := cmd.StderrPipe()
 	if err != nil {
