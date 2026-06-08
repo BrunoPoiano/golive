@@ -19,8 +19,8 @@ A terminal-based audio routing manager for PipeWire/PulseAudio systems. Easily s
 1. Clone the repository:
 
 ```bash
-git clone <repository-url>
-cd go-live
+git clone https://github.com/BrunoPoiano/golive.git
+cd golive
 ```
 
 2. Install dependencies:
@@ -32,13 +32,13 @@ go mod download
 3. Build the application:
 
 ```bash
-go build -o go-live
+go build -o golive
 ```
 
 4. Run the application:
 
 ```bash
-./go-live
+./golive
 ```
 
 ## Usage
@@ -55,4 +55,3 @@ go build -o go-live
 ## Dependencies
 
 - [Bubble Tea v2](https://github.com/charmbracelet/bubbletea) - Terminal UI framework
-- Standard Go libraries (os, exec, bufio, fmt, strings)
