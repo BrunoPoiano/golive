@@ -1,11 +1,14 @@
-package parser
+package pw
 
 import (
+	"bufio"
 	"fmt"
 	"main/models"
 	"os/exec"
 	"slices"
 	"strings"
+
+	tea "charm.land/bubbletea/v2"
 )
 
 func ReturnList(t models.PwLinks) ([]string, error) {
@@ -45,4 +48,34 @@ func Play(input, output string) *exec.Cmd {
 
 	cmd.Start()
 	return cmd
+}
+
+func MonitorChanel(cmd *exec.Cmd, p *tea.Program, input string) {
+
+	cmd = exec.Command("ffmpeg", "-f", "pulse", "-i", input, "-af", "astats=metadata=1:reset=1,ametadata=print:key=lavfi.astats.Overall.Peak_level", "-f", "null", "-")
+
+	output, err := cmd.StderrPipe()
+	if err != nil {
+		panic(err)
+	}
+
+	cmd.Start()
+
+	scanner := bufio.NewScanner(output)
+
+	if err := scanner.Err(); err != nil {
+		p.Send(models.LevelMsg("Error getting level"))
+	}
+
+	for scanner.Scan() {
+		line := scanner.Text()
+
+		if strings.Contains(line, "Peak_level=") {
+			_, level, found := strings.Cut(line, "Peak_level=")
+			if found {
+				p.Send(models.LevelMsg(level))
+			}
+		}
+	}
+
 }

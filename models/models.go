@@ -1,13 +1,19 @@
 package models
 
-import "os/exec"
+import (
+	"os/exec"
+)
+
+type LevelMsg string
 
 type MainModel struct {
-	Debug   string
-	Input   Input
-	Output  Output
-	Process *exec.Cmd
-	Cursor  int
+	PlayProcess  *exec.Cmd
+	LevelProcess *exec.Cmd
+	Input        Input
+	Output       Output
+	Debug        string
+	Level        string
+	Cursor       int
 }
 
 type Input struct {

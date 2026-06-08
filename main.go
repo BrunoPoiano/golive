@@ -4,11 +4,13 @@ import (
 	"fmt"
 	interfaces "main/interface"
 	"main/models"
-	"main/parser"
+	pw "main/pw_functions"
 	"os"
 
 	tea "charm.land/bubbletea/v2"
 )
+
+var program *tea.Program
 
 type MainModel struct {
 	models.MainModel
@@ -16,19 +18,18 @@ type MainModel struct {
 
 func initialModel() MainModel {
 
-	inputsList, err := parser.ReturnList(models.InputList)
+	inputsList, err := pw.ReturnList(models.InputList)
 	if err != nil {
 		panic(err.Error())
 	}
-	outputList, err := parser.ReturnList(models.OutputList)
+	outputList, err := pw.ReturnList(models.OutputList)
 	if err != nil {
 		panic(err.Error())
 	}
 
 	return MainModel{
 		MainModel: models.MainModel{
-			Cursor:  0,
-			Process: nil,
+			Cursor: 0,
 			Input: models.Input{
 				Items: inputsList,
 			},
@@ -39,11 +40,11 @@ func initialModel() MainModel {
 	}
 }
 func refresLists(m MainModel) MainModel {
-	inputsList, err := parser.ReturnList(models.InputList)
+	inputsList, err := pw.ReturnList(models.InputList)
 	if err != nil {
 		panic(err.Error())
 	}
-	outputList, err := parser.ReturnList(models.OutputList)
+	outputList, err := pw.ReturnList(models.OutputList)
 	if err != nil {
 		panic(err.Error())
 	}
@@ -62,6 +63,8 @@ func (m MainModel) Init() tea.Cmd {
 func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
+	case models.LevelMsg:
+		m.Level = string(msg)
 
 	// key press actions
 	case tea.KeyPressMsg:
@@ -69,8 +72,11 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// exit the program.
 		case "ctrl+c", "q":
-			if m.Process != nil && m.Process.Process != nil {
-				m.Process.Process.Kill()
+			if m.PlayProcess != nil && m.PlayProcess.Process != nil {
+				m.PlayProcess.Process.Kill()
+			}
+			if m.LevelProcess != nil && m.LevelProcess.Process != nil {
+				m.LevelProcess.Process.Kill()
 			}
 			return m, tea.Quit
 
@@ -82,9 +88,13 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// kill the currently proccess of playing
 		case "s":
-			if m.Process != nil && m.Process.Process != nil {
-				m.Process.Process.Kill()
-				m.Process = nil
+			if m.PlayProcess != nil && m.PlayProcess.Process != nil {
+				m.PlayProcess.Process.Kill()
+				m.PlayProcess = nil
+			}
+			if m.LevelProcess != nil && m.LevelProcess.Process != nil {
+				m.LevelProcess.Process.Kill()
+				m.LevelProcess = nil
 			}
 
 		case "r":
@@ -99,7 +109,8 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Play the currently setup
 		case "p":
-			m.Process = parser.Play(m.Input.Items[m.Input.Selected], m.Output.Items[m.Output.Selected])
+			m.PlayProcess = pw.Play(m.Input.Items[m.Input.Selected], m.Output.Items[m.Output.Selected])
+			go pw.MonitorChanel(m.LevelProcess, program, m.Input.Items[m.Input.Selected])
 
 		// The "enter" key and the space bar toggle the selected state
 		case "enter", "space":
@@ -117,16 +128,15 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m MainModel) View() tea.View {
-
-	if m.Process != nil {
+	if m.PlayProcess != nil {
 		return tea.NewView(interfaces.Playing(m.MainModel))
 	}
 	return tea.NewView(interfaces.ListItems(m.MainModel))
 }
 
 func main() {
-	p := tea.NewProgram(initialModel())
-	if _, err := p.Run(); err != nil {
+	program = tea.NewProgram(initialModel())
+	if _, err := program.Run(); err != nil {
 		fmt.Printf("Alas, there's been an error: %v", err)
 		os.Exit(1)
 	}
