@@ -3,6 +3,7 @@ package models
 import "os/exec"
 
 type MainModel struct {
+	Debug   string
 	Input   Input
 	Output  Output
 	Process *exec.Cmd
@@ -18,3 +19,10 @@ type Output struct {
 	Items    []string
 	Selected int
 }
+
+type PwLinks string
+
+const (
+	OutputList PwLinks = "-i"
+	InputList  PwLinks = "-o"
+)

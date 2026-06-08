@@ -16,18 +16,19 @@ type MainModel struct {
 
 func initialModel() MainModel {
 
-	inputsList, err := parser.ReturnInputList()
+	inputsList, err := parser.ReturnList(models.InputList)
 	if err != nil {
 		panic(err.Error())
 	}
-	outputList, err := parser.ReturnOuputList()
+	outputList, err := parser.ReturnList(models.OutputList)
 	if err != nil {
 		panic(err.Error())
 	}
 
 	return MainModel{
 		MainModel: models.MainModel{
-			Cursor: 0,
+			Cursor:  0,
+			Process: nil,
 			Input: models.Input{
 				Items: inputsList,
 			},
@@ -37,18 +38,20 @@ func initialModel() MainModel {
 		},
 	}
 }
-func (m MainModel) refresLists() {
-	inputsList, err := parser.ReturnInputList()
+func refresLists(m MainModel) MainModel {
+	inputsList, err := parser.ReturnList(models.InputList)
 	if err != nil {
 		panic(err.Error())
 	}
-	outputList, err := parser.ReturnOuputList()
+	outputList, err := parser.ReturnList(models.OutputList)
 	if err != nil {
 		panic(err.Error())
 	}
 
 	m.Input.Items = inputsList
 	m.Output.Items = outputList
+
+	return m
 }
 
 func (m MainModel) Init() tea.Cmd {
@@ -57,6 +60,7 @@ func (m MainModel) Init() tea.Cmd {
 }
 
 func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+
 	switch msg := msg.(type) {
 
 	// key press actions
@@ -84,7 +88,8 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "r":
-			m.refresLists()
+			m = refresLists(m)
+			return m, nil
 
 		// The "down" and "j" keys move the cursor down
 		case "down", "j":

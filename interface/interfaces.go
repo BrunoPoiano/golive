@@ -17,7 +17,10 @@ func Playing(m models.MainModel) string {
 
 func ListItems(m models.MainModel) string {
 	// The header
-	s := "Select Input:\n"
+
+	var s string
+	// s = fmt.Sprintf("debug: %s\n", m.Debug)
+	s += "Select Input:\n"
 
 	// Iterate over our choices
 	for i, choice := range m.Input.Items {

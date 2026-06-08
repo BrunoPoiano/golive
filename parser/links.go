@@ -2,45 +2,32 @@ package parser
 
 import (
 	"fmt"
+	"main/models"
 	"os/exec"
+	"slices"
 	"strings"
 )
 
-func ReturnInputList() ([]string, error) {
+func ReturnList(t models.PwLinks) ([]string, error) {
+
 	var inputs []string
-	pwInputs, err := exec.Command("pw-link", "-o").Output()
+	pwInputs, err := exec.Command("pw-link", string(t)).Output()
 	if err != nil {
 		return inputs, fmt.Errorf("Error getting inputs")
 	}
 
 	stdOut := string(pwInputs)
+	pwtype := "alsa_input"
 
-	for _, item := range strings.Split(stdOut, "\n") {
-		if strings.Contains(item, "alsa_input") {
-			input := strings.Split(item, ":")[0]
-
-			if !contains(inputs, input) {
-				inputs = append(inputs, input)
-			}
-		}
+	if string(t) == string(models.OutputList) {
+		pwtype = "alsa_output"
 	}
 
-	return inputs, nil
-}
+	for item := range strings.SplitSeq(stdOut, "\n") {
+		if strings.Contains(item, pwtype) {
+			input, _, found := strings.Cut(item, ":")
 
-func ReturnOuputList() ([]string, error) {
-	var inputs []string
-	pwInputs, err := exec.Command("pw-link", "-i").Output()
-	if err != nil {
-		return inputs, fmt.Errorf("Error getting inputs")
-	}
-
-	stdOut := string(pwInputs)
-
-	for _, item := range strings.Split(stdOut, "\n") {
-		if strings.Contains(item, "alsa_output") {
-			input := strings.Split(item, ":")[0]
-			if !contains(inputs, input) {
+			if found && !slices.Contains(inputs, input) {
 				inputs = append(inputs, input)
 			}
 		}
@@ -58,13 +45,4 @@ func Play(input, output string) *exec.Cmd {
 
 	cmd.Start()
 	return cmd
-}
-
-func contains[T comparable](slice []T, value T) bool {
-	for _, v := range slice {
-		if v == value {
-			return true
-		}
-	}
-	return false
 }
