@@ -24,8 +24,7 @@ func Playing(m models.MainModel) string {
 	s += "\nPlaying\n"
 	s += fmt.Sprintf(" Input: %s\n", fixName(m.Input.Items[m.Input.Selected]))
 	s += fmt.Sprintf("Output: %s\n", fixName(m.Output.Items[m.Output.Selected]))
-	s += "\n Press s to Stop\n"
-
+	s += "\ns: Stop | q: quit"
 	return s
 }
 

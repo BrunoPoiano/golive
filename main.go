@@ -80,16 +80,12 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m = refresLists(m)
 			return m, nil
 
-		// The "down" and "j" keys move the cursor down
-		case "down", "j":
-			if m.Cursor < (len(m.Input.Items) - 1 + len(m.Output.Items)) {
-				m.Cursor++
-			}
-
 		// Play the currently setup
 		case "p":
-			m.Play = pw.Play(m.Input.Items[m.Input.Selected], m.Output.Items[m.Output.Selected])
-			go pw.MonitorChanel(m.Level.Process, program, m.Input.Items[m.Input.Selected])
+			if m.Play == nil {
+				m.Play = pw.Play(m.Input.Items[m.Input.Selected], m.Output.Items[m.Output.Selected])
+				go pw.MonitorChanel(m.Level.Process, program, m.Input.Items[m.Input.Selected])
+			}
 			return m, nil
 
 		// exit the program.
@@ -102,10 +98,16 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, tea.Quit
 
+		// The "down" and "j" keys move the cursor down
+		case "down", "j":
+			if m.Play == nil && m.Cursor < (len(m.Input.Items)-1+len(m.Output.Items)) {
+				m.Cursor++
+			}
+
 			//Interactions
 		// The "up" and "k" keys move the cursor up
 		case "up", "k":
-			if m.Cursor > 0 {
+			if m.Play == nil && m.Cursor > 0 {
 				m.Cursor--
 			}
 
@@ -122,10 +124,12 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// The "enter" key and the space bar toggle the selected state
 		case "enter", "space":
-			if m.Cursor < len(m.Input.Items) {
-				m.Input.Selected = m.Cursor
-			} else {
-				m.Output.Selected = m.Cursor - len(m.Input.Items)
+			if m.Play == nil {
+				if m.Cursor < len(m.Input.Items) {
+					m.Input.Selected = m.Cursor
+				} else {
+					m.Output.Selected = m.Cursor - len(m.Input.Items)
+				}
 			}
 		}
 	}
