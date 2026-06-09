@@ -51,7 +51,6 @@ func Play(input, output string) *exec.Cmd {
 }
 
 func MonitorChanel(cmd *exec.Cmd, p *tea.Program, input string) {
-
 	cmd = exec.Command(
 		"ffmpeg",
 		"-f", "pulse",

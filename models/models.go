@@ -7,13 +7,21 @@ import (
 type LevelMsg string
 
 type MainModel struct {
-	PlayProcess  *exec.Cmd
-	LevelProcess *exec.Cmd
-	Input        Input
-	Output       Output
-	Debug        string
-	Level        string
-	Cursor       int
+	Play   *exec.Cmd
+	Input  Input
+	Output Output
+	Level  Level
+	Debug  string
+	Cursor int
+
+	Padding int
+	Width   int
+	Height  int
+}
+
+type Level struct {
+	Process *exec.Cmd
+	Value   string
 }
 
 type Input struct {
