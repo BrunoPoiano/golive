@@ -136,12 +136,11 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m MainModel) View() tea.View {
-	tea.ClearScreen()
 
 	var view string
 
 	view += interfaces.Header()
-
+	view += "\n"
 	if m.Play != nil {
 		view += interfaces.Playing(m.MainModel)
 	} else {
@@ -150,7 +149,9 @@ func (m MainModel) View() tea.View {
 
 	view = interfaces.Border(m.Padding, m.Width).Render(view)
 
-	return tea.NewView(view)
+	screen := tea.NewView(view)
+	screen.AltScreen = true
+	return screen
 }
 
 func main() {

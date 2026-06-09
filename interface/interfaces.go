@@ -14,13 +14,13 @@ func Header() string {
 
 	return lipgloss.NewStyle().
 		Foreground(lipgloss.Color("#50C878")).
-		Render("GoLive\n")
+		Render(".:GoLive:.\n")
 }
 
 func Playing(m models.MainModel) string {
 
 	var s string
-	s += fmt.Sprintf("Meter: %s\n", generateMeter(m.Level.Value))
+	s += fmt.Sprintf("%s\n", generateMeter(m.Level.Value))
 	s += "\nPlaying\n"
 	s += fmt.Sprintf(" Input: %s\n", fixName(m.Input.Items[m.Input.Selected]))
 	s += fmt.Sprintf("Output: %s\n", fixName(m.Output.Items[m.Output.Selected]))
@@ -34,7 +34,7 @@ func ListItems(m models.MainModel) string {
 
 	var s string
 	// s = fmt.Sprintf("debug: %s\n", m.Debug)
-	s += "\nInputs:\n"
+	s += "Inputs:\n"
 
 	// Iterate over our choices
 	for i, choice := range m.Input.Items {
@@ -119,7 +119,7 @@ func generateMeter(peakLevel string) string {
 
 	live := strings.Repeat("|", int(value))
 
-	return fmt.Sprintf("\n%s\n%s\n%s", ruler, live, ruler)
+	return fmt.Sprintf("%s\n%s\n%s", ruler, live, ruler)
 }
 
 func WidthCalc(m models.MainModel, v_width float64) int {
