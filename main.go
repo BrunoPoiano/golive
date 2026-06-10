@@ -84,18 +84,13 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "p":
 			if m.Play == nil {
 				m.Play = pw.Play(m.Input.Items[m.Input.Selected], m.Output.Items[m.Output.Selected])
-				go pw.MonitorChanel(m.Level.Process, program, m.Input.Items[m.Input.Selected])
+				m.Level.Process = pw.MonitorChanel(program, m.Input.Items[m.Input.Selected])
 			}
 			return m, nil
 
 		// exit the program.
 		case "ctrl+c", "q":
-			if m.Play != nil && m.Play.Process != nil {
-				m.Play.Process.Kill()
-			}
-			if m.Level.Process != nil && m.Level.Process.Process != nil {
-				m.Level.Process.Process.Kill()
-			}
+			pw.KillProcesses(m.MainModel)
 			return m, tea.Quit
 
 		// The "down" and "j" keys move the cursor down
@@ -103,6 +98,7 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.Play == nil && m.Cursor < (len(m.Input.Items)-1+len(m.Output.Items)) {
 				m.Cursor++
 			}
+			return m, nil
 
 			//Interactions
 		// The "up" and "k" keys move the cursor up
@@ -110,17 +106,12 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.Play == nil && m.Cursor > 0 {
 				m.Cursor--
 			}
+			return m, nil
 
 		// kill the currently proccess of playing
 		case "s":
-			if m.Play != nil && m.Play.Process != nil {
-				m.Play.Process.Kill()
-				m.Play = nil
-			}
-			if m.Level.Process != nil && m.Level.Process.Process != nil {
-				m.Level.Process.Process.Kill()
-				m.Level.Process = nil
-			}
+			m.MainModel = pw.KillProcesses(m.MainModel)
+			return m, nil
 
 		// The "enter" key and the space bar toggle the selected state
 		case "enter", "space":
@@ -131,6 +122,8 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.Output.Selected = m.Cursor - len(m.Input.Items)
 				}
 			}
+			return m, nil
+
 		}
 	}
 

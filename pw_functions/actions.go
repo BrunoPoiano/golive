@@ -50,8 +50,8 @@ func Play(input, output string) *exec.Cmd {
 	return cmd
 }
 
-func MonitorChanel(cmd *exec.Cmd, p *tea.Program, input string) {
-	cmd = exec.Command(
+func MonitorChanel(p *tea.Program, input string) *exec.Cmd {
+	cmd := exec.Command(
 		"ffmpeg",
 		"-f", "pulse",
 		"-i", input,
@@ -63,7 +63,6 @@ func MonitorChanel(cmd *exec.Cmd, p *tea.Program, input string) {
 	if err != nil {
 		panic(err)
 	}
-
 	cmd.Start()
 
 	scanner := bufio.NewScanner(output)
@@ -71,16 +70,31 @@ func MonitorChanel(cmd *exec.Cmd, p *tea.Program, input string) {
 	if err := scanner.Err(); err != nil {
 		p.Send(models.LevelMsg("Error getting level"))
 	}
+	go func() {
+		for scanner.Scan() {
+			line := scanner.Text()
 
-	for scanner.Scan() {
-		line := scanner.Text()
-
-		if strings.Contains(line, "Peak_level=") {
-			_, level, found := strings.Cut(line, "Peak_level=")
-			if found {
-				p.Send(models.LevelMsg(level))
+			if strings.Contains(line, "Peak_level=") {
+				_, level, found := strings.Cut(line, "Peak_level=")
+				if found {
+					p.Send(models.LevelMsg(level))
+				}
 			}
 		}
+	}()
+	return cmd
+
+}
+
+func KillProcesses(m models.MainModel) models.MainModel {
+	if m.Play != nil && m.Play.Process != nil {
+		m.Play.Process.Kill()
+		m.Play = nil
+	}
+	if m.Level.Process != nil && m.Level.Process.Process != nil {
+		m.Level.Process.Process.Kill()
+		m.Level.Process = nil
 	}
 
+	return m
 }
