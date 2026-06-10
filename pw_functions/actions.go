@@ -40,7 +40,6 @@ func ReturnList(t models.PwLinks) ([]string, error) {
 }
 
 func Play(input, output string) *exec.Cmd {
-
 	capture := fmt.Sprintf("--capture-props=node.target=%s", input)
 	playback := fmt.Sprintf("--playback-props=node.target=%s", output)
 
@@ -82,8 +81,8 @@ func MonitorChanel(p *tea.Program, input string) *exec.Cmd {
 			}
 		}
 	}()
-	return cmd
 
+	return cmd
 }
 
 func KillProcesses(m models.MainModel) models.MainModel {
@@ -95,6 +94,66 @@ func KillProcesses(m models.MainModel) models.MainModel {
 		m.Level.Process.Process.Kill()
 		m.Level.Process = nil
 	}
+
+	return m
+}
+
+func GetActiveNodes(PId int) (string, string) {
+	var outputId, inputId string
+	pwLoopback := fmt.Sprintf("pw-loopback-%d", PId)
+	cmdOutput, err := exec.Command("pw-cli", "ls", "Node").Output()
+	if err != nil {
+		panic(err)
+	}
+
+	lines := strings.Split(string(cmdOutput), "\n")
+	for i, line := range lines {
+		if strings.Contains(line, fmt.Sprintf("output.%s", pwLoopback)) {
+			outputId = getNodeId(lines, i)
+		}
+		if strings.Contains(line, fmt.Sprintf("input.%s", pwLoopback)) {
+			inputId = getNodeId(lines, i)
+		}
+	}
+
+	return inputId, outputId
+}
+
+func getNodeId(lines []string, index int) string {
+	start := max(0, index-5)
+
+	for _, l := range lines[start : index+1] {
+		if strings.Contains(l, "id ") && !strings.Contains(l, ".id") {
+			before, _, found := strings.Cut(l, ",")
+			if found {
+				_, value, foundValue := strings.Cut(before, " ")
+				if foundValue {
+					return value
+				}
+			}
+		}
+	}
+
+	return ""
+}
+
+func ChangeVolume(volume models.Volume) {
+	volumeCmd := fmt.Sprintf("{ mute: false, channelVolumes: [ %f, %f ] }", volume.Value, volume.Value)
+	exec.Command("pw-cli", "s", volume.NodeId, "Props", volumeCmd).Start()
+}
+
+func RefresLists(m models.MainModel) models.MainModel {
+	inputsList, err := ReturnList(models.InputList)
+	if err != nil {
+		panic(err.Error())
+	}
+	outputList, err := ReturnList(models.OutputList)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	m.Input.Items = inputsList
+	m.Output.Items = outputList
 
 	return m
 }

@@ -20,11 +20,23 @@ func Header() string {
 func Playing(m models.MainModel) string {
 
 	var s string
+	// s = fmt.Sprintf("debug: %s\n", m.Debug)
 	s += fmt.Sprintf("%s\n", generateMeter(m.Level.Value))
 	s += "\nPlaying\n"
 	s += fmt.Sprintf(" Input: %s\n", fixName(m.Input.Items[m.Input.Selected]))
 	s += fmt.Sprintf("Output: %s\n", fixName(m.Output.Items[m.Output.Selected]))
-	s += "\ns: Stop | q: quit"
+
+	return s
+}
+
+func Volume(value float64, input bool) string {
+
+	node := "Input"
+	if !input {
+		node = "Output"
+	}
+	var s string
+	s += fmt.Sprintf("%6s Volume: %d%%\n", node, int(value*100/1))
 	return s
 }
 
@@ -74,10 +86,6 @@ func ListItems(m models.MainModel) string {
 		s += fmt.Sprintf("%s [%s] %s\n", cursor, checked, fixName(choice))
 	}
 
-	// The footer
-	s += "\np: play | r: refresh lists | q: quit"
-
-	// Send the UI for rendering
 	return s
 }
 

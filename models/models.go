@@ -27,11 +27,18 @@ type Level struct {
 type Input struct {
 	Items    []string
 	Selected int
+	Volume   Volume
 }
 
 type Output struct {
 	Items    []string
 	Selected int
+	Volume   Volume
+}
+
+type Volume struct {
+	NodeId string
+	Value  float64
 }
 
 type PwLinks string

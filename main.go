@@ -5,55 +5,40 @@ import (
 	interfaces "main/interface"
 	"main/models"
 	pw "main/pw_functions"
+	"math"
 	"os"
 
 	tea "charm.land/bubbletea/v2"
 )
 
 var program *tea.Program
+var volumeRate = 0.01
 
 type MainModel struct {
 	models.MainModel
 }
 
 func initialModel() MainModel {
-
-	inputsList, err := pw.ReturnList(models.InputList)
-	if err != nil {
-		panic(err.Error())
-	}
-	outputList, err := pw.ReturnList(models.OutputList)
-	if err != nil {
-		panic(err.Error())
-	}
+	lists := pw.RefresLists(models.MainModel{})
 
 	return MainModel{
 		MainModel: models.MainModel{
 			Padding: 2,
 			Cursor:  0,
 			Input: models.Input{
-				Items: inputsList,
+				Items: lists.Input.Items,
+				Volume: models.Volume{
+					Value: 1.0,
+				},
 			},
 			Output: models.Output{
-				Items: outputList,
+				Items: lists.Output.Items,
+				Volume: models.Volume{
+					Value: 1.0,
+				},
 			},
 		},
 	}
-}
-func refresLists(m MainModel) MainModel {
-	inputsList, err := pw.ReturnList(models.InputList)
-	if err != nil {
-		panic(err.Error())
-	}
-	outputList, err := pw.ReturnList(models.OutputList)
-	if err != nil {
-		panic(err.Error())
-	}
-
-	m.Input.Items = inputsList
-	m.Output.Items = outputList
-
-	return m
 }
 
 func (m MainModel) Init() tea.Cmd {
@@ -77,14 +62,16 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		//Actions
 		case "r":
-			m = refresLists(m)
+			m.MainModel = pw.RefresLists(m.MainModel)
 			return m, nil
 
 		// Play the currently setup
 		case "p":
 			if m.Play == nil {
 				m.Play = pw.Play(m.Input.Items[m.Input.Selected], m.Output.Items[m.Output.Selected])
+				m.Debug = fmt.Sprintf("%d", m.Play.Process.Pid)
 				m.Level.Process = pw.MonitorChanel(program, m.Input.Items[m.Input.Selected])
+				m.Input.Volume.NodeId, m.Output.Volume.NodeId = pw.GetActiveNodes(m.Play.Process.Pid)
 			}
 			return m, nil
 
@@ -100,6 +87,40 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 
+		case "left":
+			if m.Output.Volume.Value > 0 {
+				m.Output.Volume.Value = math.Max(0, m.Output.Volume.Value-volumeRate)
+			}
+			if m.Output.Volume.NodeId != "" {
+				go pw.ChangeVolume(m.Output.Volume)
+			}
+			return m, nil
+		case "right":
+			if m.Output.Volume.Value < 1.0 {
+				m.Output.Volume.Value += volumeRate
+			}
+			if m.Output.Volume.NodeId != "" {
+				go pw.ChangeVolume(m.Output.Volume)
+			}
+			return m, nil
+
+		case "a":
+			if m.Input.Volume.Value > 0 {
+				m.Input.Volume.Value = math.Max(0, m.Input.Volume.Value-volumeRate)
+			}
+			if m.Input.Volume.NodeId != "" {
+				go pw.ChangeVolume(m.Input.Volume)
+			}
+			return m, nil
+		case "d":
+			if m.Input.Volume.Value < 1.0 {
+				m.Input.Volume.Value += volumeRate
+			}
+			if m.Input.Volume.NodeId != "" {
+				go pw.ChangeVolume(m.Input.Volume)
+			}
+			return m, nil
+
 			//Interactions
 		// The "up" and "k" keys move the cursor up
 		case "up", "k":
@@ -109,7 +130,7 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		// kill the currently proccess of playing
-		case "s":
+		case "x":
 			m.MainModel = pw.KillProcesses(m.MainModel)
 			return m, nil
 
@@ -143,7 +164,19 @@ func (m MainModel) View() tea.View {
 	} else {
 		view += interfaces.ListItems(m.MainModel)
 	}
+	view += "\n"
 
+	view += interfaces.Volume(m.Input.Volume.Value, true)
+	view += interfaces.Volume(m.Output.Volume.Value, false)
+
+	view += "\n\n   a:  decrease input volume |     d: increase input volume"
+	view += "\nleft: decrease output volume | right: increase output volume"
+
+	if m.Play != nil {
+		view += "\nx: Stop | q: quit"
+	} else {
+		view += "\np: play | r: refresh lists | q: quit"
+	}
 	view = interfaces.Border(m.Padding, m.Width).Render(view)
 
 	screen := tea.NewView(view)
