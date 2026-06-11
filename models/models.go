@@ -1,13 +1,14 @@
 package models
 
 import (
+	"context"
 	"os/exec"
 )
 
 type LevelMsg string
 
 type MainModel struct {
-	Play   *exec.Cmd
+	Play   Action
 	Input  Input
 	Output Output
 	Level  Level
@@ -17,6 +18,11 @@ type MainModel struct {
 	Padding int
 	Width   int
 	Height  int
+}
+
+type Action = struct {
+	Cmd    *exec.Cmd
+	Cancel context.CancelFunc
 }
 
 type PwDump struct {
@@ -33,8 +39,8 @@ type PwDump struct {
 }
 
 type Level struct {
-	Process *exec.Cmd
-	Value   string
+	Action Action
+	Value  string
 }
 
 type Input struct {

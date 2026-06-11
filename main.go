@@ -21,7 +21,7 @@ type MainModel struct {
 }
 
 func initialModel() MainModel {
-	lists := pw.RefresLists(models.MainModel{})
+	lists := pw.RefreshLists(models.MainModel{})
 
 	return MainModel{
 		MainModel: models.MainModel{
@@ -60,14 +60,14 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		//Actions
 		case "r":
-			m.MainModel = pw.RefresLists(m.MainModel)
+			m.MainModel = pw.RefreshLists(m.MainModel)
 			return m, nil
 
 		// Play the currently setup
 		case "p":
-			if m.Play == nil {
-				m.Play = pw.Play(m.MainModel)
-				m.Level.Process = pw.MonitorChanel(program, m.Input.Items[m.Input.Selected].Info.Props.NodeName)
+			if m.Play.Cmd == nil && m.Input.Items[m.Input.Selected].Id != 0 && m.Output.Items[m.Output.Selected].Id != 0 {
+				m.MainModel = pw.Play(m.MainModel)
+				m.MainModel = pw.MonitorChannel(program, m.MainModel)
 			}
 			return m, nil
 
@@ -78,7 +78,7 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// The "down" and "j" keys move the cursor down
 		case "down", "j":
-			if m.Play == nil && m.Cursor < (len(m.Input.Items)-1+len(m.Output.Items)) {
+			if m.Play.Cmd == nil && m.Cursor < (len(m.Input.Items)-1+len(m.Output.Items)) {
 				m.Cursor++
 			}
 			return m, nil
@@ -88,7 +88,7 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.Output.Volume > 0 {
 				m.Output.Volume = math.Max(0, m.Output.Volume-volumeRate)
 			}
-			if m.Play != nil {
+			if m.Play.Cmd != nil {
 				id := m.Output.Items[m.Output.Selected].Id
 				go pw.ChangeVolume(id, m.Output.Volume)
 			}
@@ -99,7 +99,7 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.Output.Volume < 1.0 {
 				m.Output.Volume += volumeRate
 			}
-			if m.Play != nil {
+			if m.Play.Cmd != nil {
 				id := m.Output.Items[m.Output.Selected].Id
 				go pw.ChangeVolume(id, m.Output.Volume)
 			}
@@ -110,7 +110,7 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.Input.Volume > 0 {
 				m.Input.Volume = math.Max(0, m.Input.Volume-volumeRate)
 			}
-			if m.Play != nil {
+			if m.Play.Cmd != nil {
 				id := m.Input.Items[m.Input.Selected].Id
 				go pw.ChangeVolume(id, m.Input.Volume)
 			}
@@ -121,7 +121,7 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.Input.Volume < 1.0 {
 				m.Input.Volume += volumeRate
 			}
-			if m.Play != nil {
+			if m.Play.Cmd != nil {
 				id := m.Input.Items[m.Input.Selected].Id
 				go pw.ChangeVolume(id, m.Input.Volume)
 			}
@@ -130,7 +130,7 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		//Interactions
 		// The "up" and "k" keys move the cursor up
 		case "up", "k":
-			if m.Play == nil && m.Cursor > 0 {
+			if m.Play.Cmd == nil && m.Cursor > 0 {
 				m.Cursor--
 			}
 			return m, nil
@@ -142,7 +142,7 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// The "enter" key and the space bar toggle the selected state
 		case "enter", "space":
-			if m.Play == nil {
+			if m.Play.Cmd == nil {
 				if m.Cursor < len(m.Input.Items) {
 					m.Input.Selected = m.Cursor
 				} else {
@@ -164,12 +164,28 @@ func (m MainModel) View() tea.View {
 	var view strings.Builder
 	var actions strings.Builder
 
+	if len(m.Input.Items) == 0 || len(m.Output.Items) == 0 {
+
+		if len(m.Input.Items) == 0 {
+			view.WriteString("No Inputs found")
+		}
+		if len(m.Output.Items) == 0 {
+			view.WriteString("No Outputs found")
+		}
+
+		viewBorder := interfaces.Border(m.Padding, m.Width).Render(view.String())
+		screen := tea.NewView(viewBorder)
+		screen.AltScreen = true
+
+		return screen
+	}
+
 	actions.WriteString("Increase Input  Vol: d")
 	actions.WriteString("\nDecrease Input  Vol: a")
 	actions.WriteString("\nIncrease Output Vol: right")
 	actions.WriteString("\nDecrease Output Vol: left")
 
-	if m.Play != nil {
+	if m.Play.Cmd != nil {
 		view.WriteString(interfaces.Playing(m.MainModel))
 		actions.WriteString("\nx: Stop\nq: quit")
 	} else {

@@ -2,6 +2,7 @@ package pw
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"main/models"
@@ -19,6 +20,7 @@ func ReturnList(t models.PwLinks) ([]models.PwDump, error) {
 
 	pwInputs, err := exec.Command("pw-dump").Output()
 	if err != nil {
+		return list, fmt.Errorf("Error getting list")
 	}
 
 	if err := json.Unmarshal(pwInputs, &dump); err != nil {
@@ -40,23 +42,32 @@ func ReturnList(t models.PwLinks) ([]models.PwDump, error) {
 	return list, nil
 }
 
-func Play(m models.MainModel) *exec.Cmd {
+func Play(m models.MainModel) models.MainModel {
+
 	input := m.Input.Items[m.Input.Selected].Info.Props.NodeName
 	output := m.Output.Items[m.Output.Selected].Info.Props.NodeName
 
 	capture := fmt.Sprintf("--capture-props=node.target=%s", input)
 	playback := fmt.Sprintf("--playback-props=node.target=%s", output)
 
-	cmd := exec.Command("pw-loopback", capture, playback)
+	ctx, cancel := context.WithCancel(context.Background())
 
-	cmd.Start()
+	m.Play.Cancel = cancel
+	m.Play.Cmd = exec.CommandContext(ctx, "pw-loopback", capture, playback)
+
+	m.Play.Cmd.Start()
 	go ChangeVolume(m.Input.Items[m.Input.Selected].Id, m.Input.Volume)
 	go ChangeVolume(m.Output.Items[m.Output.Selected].Id, m.Output.Volume)
-	return cmd
+	return m
 }
 
-func MonitorChanel(p *tea.Program, input string) *exec.Cmd {
-	cmd := exec.Command(
+func MonitorChannel(p *tea.Program, m models.MainModel) models.MainModel {
+
+	input := m.Input.Items[m.Input.Selected].Info.Props.NodeName
+	ctx, cancel := context.WithCancel(context.Background())
+
+	m.Level.Action.Cancel = cancel
+	m.Level.Action.Cmd = exec.CommandContext(ctx,
 		"ffmpeg",
 		"-f", "pulse",
 		"-i", input,
@@ -64,11 +75,11 @@ func MonitorChanel(p *tea.Program, input string) *exec.Cmd {
 		"-f", "null",
 		"-")
 
-	output, err := cmd.StderrPipe()
+	output, err := m.Level.Action.Cmd.StderrPipe()
 	if err != nil {
 		panic(err)
 	}
-	cmd.Start()
+	m.Level.Action.Cmd.Start()
 
 	scanner := bufio.NewScanner(output)
 
@@ -89,28 +100,27 @@ func MonitorChanel(p *tea.Program, input string) *exec.Cmd {
 		}
 	}()
 
-	return cmd
+	return m
 }
 
 func KillProcesses(m models.MainModel) models.MainModel {
-	if m.Play != nil && m.Play.Process != nil {
-		m.Play.Process.Kill()
-		m.Play = nil
+	if err := stop(&m.Play); err != nil {
+		fmt.Println(err)
 	}
-	if m.Level.Process != nil && m.Level.Process.Process != nil {
-		m.Level.Process.Process.Kill()
-		m.Level.Process = nil
+
+	if err := stop(&m.Level.Action); err != nil {
+		fmt.Println(err)
 	}
 
 	return m
 }
 
-func ChangeVolume(id int, volume float64) {
+func ChangeVolume(id int, volume float64) error {
 	volumeCmd := fmt.Sprintf("{ mute: false, channelVolumes: [ %f, %f ] }", volume, volume)
-	exec.Command("pw-cli", "s", strconv.Itoa(id), "Props", volumeCmd).Start()
+	return exec.Command("pw-cli", "s", strconv.Itoa(id), "Props", volumeCmd).Start()
 }
 
-func RefresLists(m models.MainModel) models.MainModel {
+func RefreshLists(m models.MainModel) models.MainModel {
 	inputsList, err := ReturnList(models.InputList)
 	if err != nil {
 		panic(err.Error())
