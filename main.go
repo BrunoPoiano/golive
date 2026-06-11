@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 )
 
 var program *tea.Program
@@ -159,25 +160,35 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m MainModel) View() tea.View {
 
+	var header strings.Builder
 	var view strings.Builder
+	var actions strings.Builder
 
-	view.WriteString(interfaces.Header())
-	view.WriteString("\n")
+	actions.WriteString("Increase Input  Vol: d")
+	actions.WriteString("\nDecrease Input  Vol: a")
+	actions.WriteString("\nIncrease Output Vol: right")
+	actions.WriteString("\nDecrease Output Vol: left")
+
 	if m.Play != nil {
 		view.WriteString(interfaces.Playing(m.MainModel))
+		actions.WriteString("\nx: Stop\nq: quit")
 	} else {
 		view.WriteString(interfaces.ListItems(m.MainModel))
-	}
-	view.WriteString("\n   a: - input  volume |     d: + input volume")
-	view.WriteString("\nleft: - output volume | right: + output volume")
-
-	if m.Play != nil {
-		view.WriteString("\nx: Stop | q: quit")
-	} else {
-		view.WriteString("\np: play | r: refresh lists | q: quit")
+		actions.WriteString("\np: play\nr: refresh lists\nq: quit")
 	}
 
-	viewBorder := interfaces.Border(m.Padding, m.Width).Render(view.String())
+	header.WriteString(interfaces.Header())
+	left := lipgloss.NewStyle().Width(70).Render(view.String())
+	right := lipgloss.NewStyle().MarginLeft(2).Render(actions.String())
+
+	content := lipgloss.JoinHorizontal(lipgloss.Left, left, right)
+	if m.Width < 110 {
+		content = lipgloss.JoinVertical(lipgloss.Top, left, right)
+	}
+
+	finalScreen := lipgloss.JoinVertical(lipgloss.Top, header.String(), content)
+
+	viewBorder := interfaces.Border(m.Padding, m.Width).Render(finalScreen)
 
 	screen := tea.NewView(viewBorder)
 	screen.AltScreen = true

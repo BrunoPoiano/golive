@@ -23,8 +23,8 @@ func Playing(m models.MainModel) string {
 	fmt.Fprintf(&s, "%s\n", generateMeter(m.Level.Value))
 	// fmt.Fprintf(&s, "debug %d\n", m.Input.Items[m.Input.Selected].Id)
 	s.WriteString("\nPlaying\n")
-	fmt.Fprintf(&s, " Input: %d%% %s\n", int(m.Input.Volume*100/1), (m.Input.Items[m.Input.Selected].Info.Props.NodeDescription))
-	fmt.Fprintf(&s, "Output: %d%% %s\n", int(m.Output.Volume*100/1), (m.Output.Items[m.Output.Selected].Info.Props.NodeDescription))
+	fmt.Fprintf(&s, " Input: %d%% | %s\n", int(m.Input.Volume*100/1), (m.Input.Items[m.Input.Selected].Info.Props.NodeDescription))
+	fmt.Fprintf(&s, "Output: %d%% | %s\n", int(m.Output.Volume*100/1), (m.Output.Items[m.Output.Selected].Info.Props.NodeDescription))
 
 	return s.String()
 }
