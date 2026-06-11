@@ -187,7 +187,6 @@ func (m MainModel) View() tea.View {
 	}
 
 	finalScreen := lipgloss.JoinVertical(lipgloss.Top, header.String(), content)
-
 	viewBorder := interfaces.Border(m.Padding, m.Width).Render(finalScreen)
 
 	screen := tea.NewView(viewBorder)
