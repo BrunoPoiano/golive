@@ -66,7 +66,6 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "p":
 			if m.Play == nil {
 				m.Play = pw.Play(m.MainModel)
-				m.Debug = fmt.Sprintf("%d", m.Play.Process.Pid)
 				m.Level.Process = pw.MonitorChanel(program, m.Input.Items[m.Input.Selected].Info.Props.NodeName)
 			}
 			return m, nil
@@ -83,25 +82,29 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 
+		// output volume
 		case "left":
 			if m.Output.Volume > 0 {
 				m.Output.Volume = math.Max(0, m.Output.Volume-volumeRate)
 			}
 			if m.Play != nil {
-				id := m.Output.Items[m.Output.Selected].Info.Props.NodeId
+				id := m.Output.Items[m.Output.Selected].Id
 				go pw.ChangeVolume(id, m.Output.Volume)
 			}
 			return m, nil
+
+		// output volume
 		case "right":
 			if m.Output.Volume < 1.0 {
 				m.Output.Volume += volumeRate
 			}
 			if m.Play != nil {
-				id := m.Output.Items[m.Output.Selected].Info.Props.NodeId
+				id := m.Output.Items[m.Output.Selected].Id
 				go pw.ChangeVolume(id, m.Output.Volume)
 			}
 			return m, nil
 
+		// Input Volume
 		case "a":
 			if m.Input.Volume > 0 {
 				m.Input.Volume = math.Max(0, m.Input.Volume-volumeRate)
@@ -111,6 +114,8 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				go pw.ChangeVolume(id, m.Input.Volume)
 			}
 			return m, nil
+
+		// Input Volume
 		case "d":
 			if m.Input.Volume < 1.0 {
 				m.Input.Volume += volumeRate
@@ -121,7 +126,7 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 
-			//Interactions
+		//Interactions
 		// The "up" and "k" keys move the cursor up
 		case "up", "k":
 			if m.Play == nil && m.Cursor > 0 {
@@ -144,7 +149,6 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 			return m, nil
-
 		}
 	}
 
@@ -164,8 +168,8 @@ func (m MainModel) View() tea.View {
 	} else {
 		view.WriteString(interfaces.ListItems(m.MainModel))
 	}
-	view.WriteString("\n   a:  decrease input volume |     d: increase input volume")
-	view.WriteString("\nleft: decrease output volume | right: increase output volume")
+	view.WriteString("\n   a: - input  volume |     d: + input volume")
+	view.WriteString("\nleft: - output volume | right: + output volume")
 
 	if m.Play != nil {
 		view.WriteString("\nx: Stop | q: quit")

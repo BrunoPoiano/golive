@@ -21,7 +21,7 @@ func Playing(m models.MainModel) string {
 
 	var s strings.Builder
 	fmt.Fprintf(&s, "%s\n", generateMeter(m.Level.Value))
-	fmt.Fprintf(&s, "debug %d\n", m.Input.Items[m.Input.Selected].Id)
+	// fmt.Fprintf(&s, "debug %d\n", m.Input.Items[m.Input.Selected].Id)
 	s.WriteString("\nPlaying\n")
 	fmt.Fprintf(&s, " Input: %d%% %s\n", int(m.Input.Volume*100/1), (m.Input.Items[m.Input.Selected].Info.Props.NodeDescription))
 	fmt.Fprintf(&s, "Output: %d%% %s\n", int(m.Output.Volume*100/1), (m.Output.Items[m.Output.Selected].Info.Props.NodeDescription))
@@ -30,7 +30,6 @@ func Playing(m models.MainModel) string {
 }
 
 func ListItems(m models.MainModel) string {
-	// The header
 
 	var s strings.Builder
 	// s = fmt.Sprintf("debug: %s\n", m.Debug)
@@ -77,13 +76,6 @@ func ListItems(m models.MainModel) string {
 	return s.String()
 }
 
-func fixName(name string) string {
-	splited := strings.Split(name, ".")
-
-	audioType := strings.ReplaceAll(splited[len(splited)-1], "-", " ")
-	return fmt.Sprintf("%13s | %s ", audioType, splited[1])
-}
-
 var ruler string = fmt.Sprintf("%s%s%s", lipgloss.NewStyle().
 	Foreground(lipgloss.Color("#FF4800")).
 	Render(fmt.Sprintf("%s6", strings.Repeat("-", 5))),
@@ -106,12 +98,7 @@ func generateMeter(peakLevel string) string {
 	}
 
 	value = math.Floor(value * -1)
-	if value < 1 {
-		value = 1
-	}
-	if value > 66 {
-		value = 66
-	}
+	value = math.Max(0, math.Min(66, value))
 
 	live := strings.Repeat("|", int(value))
 

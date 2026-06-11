@@ -22,7 +22,7 @@ func ReturnList(t models.PwLinks) ([]models.PwDump, error) {
 	}
 
 	if err := json.Unmarshal(pwInputs, &dump); err != nil {
-		panic(err)
+		return list, fmt.Errorf("Error parsing list")
 	}
 
 	pwtype := "alsa_input"
@@ -50,6 +50,8 @@ func Play(m models.MainModel) *exec.Cmd {
 	cmd := exec.Command("pw-loopback", capture, playback)
 
 	cmd.Start()
+	go ChangeVolume(m.Input.Items[m.Input.Selected].Id, m.Input.Volume)
+	go ChangeVolume(m.Output.Items[m.Output.Selected].Id, m.Output.Volume)
 	return cmd
 }
 
@@ -73,6 +75,7 @@ func MonitorChanel(p *tea.Program, input string) *exec.Cmd {
 	if err := scanner.Err(); err != nil {
 		p.Send(models.LevelMsg("Error getting level"))
 	}
+
 	go func() {
 		for scanner.Scan() {
 			line := scanner.Text()
@@ -100,45 +103,6 @@ func KillProcesses(m models.MainModel) models.MainModel {
 	}
 
 	return m
-}
-
-func GetActiveNodes(PId int) (string, string) {
-	var outputId, inputId string
-	pwLoopback := fmt.Sprintf("pw-loopback-%d", PId)
-	cmdOutput, err := exec.Command("pw-cli", "ls", "Node").Output()
-	if err != nil {
-		panic(err)
-	}
-
-	lines := strings.Split(string(cmdOutput), "\n")
-	for i, line := range lines {
-		if strings.Contains(line, fmt.Sprintf("output.%s", pwLoopback)) {
-			outputId = getNodeId(lines, i)
-		}
-		if strings.Contains(line, fmt.Sprintf("input.%s", pwLoopback)) {
-			inputId = getNodeId(lines, i)
-		}
-	}
-
-	return inputId, outputId
-}
-
-func getNodeId(lines []string, index int) string {
-	start := max(0, index-5)
-
-	for _, l := range lines[start : index+1] {
-		if strings.Contains(l, "id ") && !strings.Contains(l, ".id") {
-			before, _, found := strings.Cut(l, ",")
-			if found {
-				_, value, foundValue := strings.Cut(before, " ")
-				if foundValue {
-					return value
-				}
-			}
-		}
-	}
-
-	return ""
 }
 
 func ChangeVolume(id int, volume float64) {
