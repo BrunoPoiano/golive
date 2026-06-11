@@ -42,7 +42,7 @@ func ReturnList(t models.PwLinks) ([]models.PwDump, error) {
 	return list, nil
 }
 
-func Play(m models.MainModel) models.MainModel {
+func Play(p *tea.Program, m models.MainModel) models.MainModel {
 
 	input := m.Input.Items[m.Input.Selected].Info.Props.NodeName
 	output := m.Output.Items[m.Output.Selected].Info.Props.NodeName
@@ -55,9 +55,24 @@ func Play(m models.MainModel) models.MainModel {
 	m.Play.Cancel = cancel
 	m.Play.Cmd = exec.CommandContext(ctx, "pw-loopback", capture, playback)
 
-	m.Play.Cmd.Start()
-	go ChangeVolume(m.Input.Items[m.Input.Selected].Id, m.Input.Volume)
-	go ChangeVolume(m.Output.Items[m.Output.Selected].Id, m.Output.Volume)
+	err := m.Play.Cmd.Start()
+	if err != nil {
+		p.Send(models.ErrorMsg("Error starting player"))
+		return m
+	}
+
+	go func() {
+		err := ChangeVolume(m.Input.Items[m.Input.Selected].Id, m.Input.Volume)
+		if err != nil {
+			p.Send(models.ErrorMsg("Error changing input volume"))
+		}
+		ChangeVolume(m.Output.Items[m.Output.Selected].Id, m.Output.Volume)
+		if err != nil {
+			p.Send(models.ErrorMsg("Error changing output volume"))
+		}
+
+	}()
+
 	return m
 }
 
@@ -77,10 +92,10 @@ func MonitorChannel(p *tea.Program, m models.MainModel) models.MainModel {
 
 	output, err := m.Level.Action.Cmd.StderrPipe()
 	if err != nil {
-		panic(err)
+		p.Send(models.LevelMsg("Error getting level"))
 	}
-	m.Level.Action.Cmd.Start()
 
+	m.Level.Action.Cmd.Start()
 	scanner := bufio.NewScanner(output)
 
 	if err := scanner.Err(); err != nil {
@@ -103,13 +118,13 @@ func MonitorChannel(p *tea.Program, m models.MainModel) models.MainModel {
 	return m
 }
 
-func KillProcesses(m models.MainModel) models.MainModel {
+func KillProcesses(p *tea.Program, m models.MainModel) models.MainModel {
 	if err := stop(&m.Play); err != nil {
-		fmt.Println(err)
+		p.Send(models.ErrorMsg("Error killing play process"))
 	}
 
 	if err := stop(&m.Level.Action); err != nil {
-		fmt.Println(err)
+		p.Send(models.ErrorMsg("Error level meter process"))
 	}
 
 	return m
@@ -120,18 +135,17 @@ func ChangeVolume(id int, volume float64) error {
 	return exec.Command("pw-cli", "s", strconv.Itoa(id), "Props", volumeCmd).Start()
 }
 
-func RefreshLists(m models.MainModel) models.MainModel {
-	inputsList, err := ReturnList(models.InputList)
+func RefreshLists(m models.MainModel) (models.MainModel, error) {
+	var err error
+	m.Input.Selected = 0
+	m.Output.Selected = 0
+	m.Input.Items, err = ReturnList(models.InputList)
 	if err != nil {
-		panic(err.Error())
+		return m, fmt.Errorf("Error getting inputs")
 	}
-	outputList, err := ReturnList(models.OutputList)
+	m.Output.Items, err = ReturnList(models.OutputList)
 	if err != nil {
-		panic(err.Error())
+		return m, fmt.Errorf("Error getting outputs")
 	}
-
-	m.Input.Items = inputsList
-	m.Output.Items = outputList
-
-	return m
+	return m, nil
 }

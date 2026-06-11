@@ -7,7 +7,6 @@ import (
 	pw "main/pw_functions"
 	"math"
 	"os"
-	"strings"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
@@ -21,12 +20,13 @@ type MainModel struct {
 }
 
 func initialModel() MainModel {
-	lists := pw.RefreshLists(models.MainModel{})
+	lists, error := pw.RefreshLists(models.MainModel{})
 
 	return MainModel{
 		MainModel: models.MainModel{
 			Padding: 2,
 			Cursor:  0,
+			Error:   error,
 			Input: models.Input{
 				Items:  lists.Input.Items,
 				Volume: 1.0,
@@ -40,6 +40,7 @@ func initialModel() MainModel {
 }
 
 func (m MainModel) Init() tea.Cmd {
+
 	return nil
 }
 
@@ -54,26 +55,39 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case models.LevelMsg:
 		m.Level.Value = string(msg)
 
+	case models.ErrorMsg:
+		m.Error = fmt.Errorf(string(msg))
+
 	// key press actions
 	case tea.KeyPressMsg:
 		switch msg.String() {
 
 		//Actions
 		case "r":
-			m.MainModel = pw.RefreshLists(m.MainModel)
+			m.Error = nil
+			var err error
+			m.MainModel, err = pw.RefreshLists(m.MainModel)
+			if err != nil {
+				m.Error = err
+			}
 			return m, nil
 
 		// Play the currently setup
 		case "p":
-			if m.Play.Cmd == nil && m.Input.Items[m.Input.Selected].Id != 0 && m.Output.Items[m.Output.Selected].Id != 0 {
-				m.MainModel = pw.Play(m.MainModel)
+			if m.Play.Cmd == nil && len(m.Input.Items) != 0 && len(m.Output.Items) != 0 {
+				m.MainModel = pw.Play(program, m.MainModel)
 				m.MainModel = pw.MonitorChannel(program, m.MainModel)
 			}
 			return m, nil
 
+		// kill the currently proccess of playing
+		case "x":
+			m.MainModel = pw.KillProcesses(program, m.MainModel)
+			return m, nil
+
 		// exit the program.
 		case "ctrl+c", "q":
-			pw.KillProcesses(m.MainModel)
+			pw.KillProcesses(program, m.MainModel)
 			return m, tea.Quit
 
 		// The "down" and "j" keys move the cursor down
@@ -97,7 +111,7 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// output volume
 		case "right":
 			if m.Output.Volume < 1.0 {
-				m.Output.Volume += volumeRate
+				m.Output.Volume = math.Min(1.0, m.Output.Volume+volumeRate)
 			}
 			if m.Play.Cmd != nil {
 				id := m.Output.Items[m.Output.Selected].Id
@@ -119,7 +133,7 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Input Volume
 		case "d":
 			if m.Input.Volume < 1.0 {
-				m.Input.Volume += volumeRate
+				m.Input.Volume = math.Min(1.0, m.Input.Volume+volumeRate)
 			}
 			if m.Play.Cmd != nil {
 				id := m.Input.Items[m.Input.Selected].Id
@@ -133,11 +147,6 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.Play.Cmd == nil && m.Cursor > 0 {
 				m.Cursor--
 			}
-			return m, nil
-
-		// kill the currently proccess of playing
-		case "x":
-			m.MainModel = pw.KillProcesses(m.MainModel)
 			return m, nil
 
 		// The "enter" key and the space bar toggle the selected state
@@ -160,49 +169,17 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m MainModel) View() tea.View {
 
-	var header strings.Builder
-	var view strings.Builder
-	var actions strings.Builder
+	header, left, right := interfaces.View(m.MainModel)
 
-	if len(m.Input.Items) == 0 || len(m.Output.Items) == 0 {
-
-		if len(m.Input.Items) == 0 {
-			view.WriteString("No Inputs found")
-		}
-		if len(m.Output.Items) == 0 {
-			view.WriteString("No Outputs found")
-		}
-
-		viewBorder := interfaces.Border(m.Padding, m.Width).Render(view.String())
-		screen := tea.NewView(viewBorder)
-		screen.AltScreen = true
-
-		return screen
-	}
-
-	actions.WriteString("Increase Input  Vol: d")
-	actions.WriteString("\nDecrease Input  Vol: a")
-	actions.WriteString("\nIncrease Output Vol: right")
-	actions.WriteString("\nDecrease Output Vol: left")
-
-	if m.Play.Cmd != nil {
-		view.WriteString(interfaces.Playing(m.MainModel))
-		actions.WriteString("\nx: Stop\nq: quit")
-	} else {
-		view.WriteString(interfaces.ListItems(m.MainModel))
-		actions.WriteString("\np: play\nr: refresh lists\nq: quit")
-	}
-
-	header.WriteString(interfaces.Header())
-	left := lipgloss.NewStyle().Width(70).Render(view.String())
-	right := lipgloss.NewStyle().MarginLeft(2).Render(actions.String())
+	left = lipgloss.NewStyle().Width(70).Render(left)
+	right = lipgloss.NewStyle().MarginLeft(2).Render(right)
 
 	content := lipgloss.JoinHorizontal(lipgloss.Left, left, right)
 	if m.Width < 110 {
 		content = lipgloss.JoinVertical(lipgloss.Top, left, right)
 	}
 
-	finalScreen := lipgloss.JoinVertical(lipgloss.Top, header.String(), content)
+	finalScreen := lipgloss.JoinVertical(lipgloss.Top, header, content)
 	viewBorder := interfaces.Border(m.Padding, m.Width).Render(finalScreen)
 
 	screen := tea.NewView(viewBorder)

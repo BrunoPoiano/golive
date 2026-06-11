@@ -6,6 +6,7 @@ import (
 )
 
 type LevelMsg string
+type ErrorMsg string
 
 type MainModel struct {
 	Play   Action
@@ -13,6 +14,7 @@ type MainModel struct {
 	Output Output
 	Level  Level
 	Debug  string
+	Error  error
 	Cursor int
 
 	Padding int
