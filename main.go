@@ -5,120 +5,151 @@ import (
 	interfaces "main/interface"
 	"main/models"
 	pw "main/pw_functions"
+	"math"
 	"os"
+	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 )
 
 var program *tea.Program
+var volumeRate = 0.01
 
 type MainModel struct {
 	models.MainModel
 }
 
 func initialModel() MainModel {
-
-	inputsList, err := pw.ReturnList(models.InputList)
-	if err != nil {
-		panic(err.Error())
-	}
-	outputList, err := pw.ReturnList(models.OutputList)
-	if err != nil {
-		panic(err.Error())
-	}
+	lists := pw.RefresLists(models.MainModel{})
 
 	return MainModel{
 		MainModel: models.MainModel{
-			Cursor: 0,
+			Padding: 2,
+			Cursor:  0,
 			Input: models.Input{
-				Items: inputsList,
+				Items:  lists.Input.Items,
+				Volume: 1.0,
 			},
 			Output: models.Output{
-				Items: outputList,
+				Items:  lists.Output.Items,
+				Volume: 1.0,
 			},
 		},
 	}
 }
-func refresLists(m MainModel) MainModel {
-	inputsList, err := pw.ReturnList(models.InputList)
-	if err != nil {
-		panic(err.Error())
-	}
-	outputList, err := pw.ReturnList(models.OutputList)
-	if err != nil {
-		panic(err.Error())
-	}
-
-	m.Input.Items = inputsList
-	m.Output.Items = outputList
-
-	return m
-}
 
 func (m MainModel) Init() tea.Cmd {
-	// Just return `nil`, which means "no I/O right now, please."
 	return nil
 }
 
 func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
+
+	case tea.WindowSizeMsg:
+		m.Width = msg.Width
+		m.Height = msg.Height
+
 	case models.LevelMsg:
-		m.Level = string(msg)
+		m.Level.Value = string(msg)
 
 	// key press actions
 	case tea.KeyPressMsg:
 		switch msg.String() {
 
-		// exit the program.
-		case "ctrl+c", "q":
-			if m.PlayProcess != nil && m.PlayProcess.Process != nil {
-				m.PlayProcess.Process.Kill()
-			}
-			if m.LevelProcess != nil && m.LevelProcess.Process != nil {
-				m.LevelProcess.Process.Kill()
-			}
-			return m, tea.Quit
-
-		// The "up" and "k" keys move the cursor up
-		case "up", "k":
-			if m.Cursor > 0 {
-				m.Cursor--
-			}
-
-		// kill the currently proccess of playing
-		case "s":
-			if m.PlayProcess != nil && m.PlayProcess.Process != nil {
-				m.PlayProcess.Process.Kill()
-				m.PlayProcess = nil
-			}
-			if m.LevelProcess != nil && m.LevelProcess.Process != nil {
-				m.LevelProcess.Process.Kill()
-				m.LevelProcess = nil
-			}
-
+		//Actions
 		case "r":
-			m = refresLists(m)
+			m.MainModel = pw.RefresLists(m.MainModel)
 			return m, nil
-
-		// The "down" and "j" keys move the cursor down
-		case "down", "j":
-			if m.Cursor < (len(m.Input.Items) - 1 + len(m.Output.Items)) {
-				m.Cursor++
-			}
 
 		// Play the currently setup
 		case "p":
-			m.PlayProcess = pw.Play(m.Input.Items[m.Input.Selected], m.Output.Items[m.Output.Selected])
-			go pw.MonitorChanel(m.LevelProcess, program, m.Input.Items[m.Input.Selected])
+			if m.Play == nil {
+				m.Play = pw.Play(m.MainModel)
+				m.Level.Process = pw.MonitorChanel(program, m.Input.Items[m.Input.Selected].Info.Props.NodeName)
+			}
+			return m, nil
+
+		// exit the program.
+		case "ctrl+c", "q":
+			pw.KillProcesses(m.MainModel)
+			return m, tea.Quit
+
+		// The "down" and "j" keys move the cursor down
+		case "down", "j":
+			if m.Play == nil && m.Cursor < (len(m.Input.Items)-1+len(m.Output.Items)) {
+				m.Cursor++
+			}
+			return m, nil
+
+		// output volume
+		case "left":
+			if m.Output.Volume > 0 {
+				m.Output.Volume = math.Max(0, m.Output.Volume-volumeRate)
+			}
+			if m.Play != nil {
+				id := m.Output.Items[m.Output.Selected].Id
+				go pw.ChangeVolume(id, m.Output.Volume)
+			}
+			return m, nil
+
+		// output volume
+		case "right":
+			if m.Output.Volume < 1.0 {
+				m.Output.Volume += volumeRate
+			}
+			if m.Play != nil {
+				id := m.Output.Items[m.Output.Selected].Id
+				go pw.ChangeVolume(id, m.Output.Volume)
+			}
+			return m, nil
+
+		// Input Volume
+		case "a":
+			if m.Input.Volume > 0 {
+				m.Input.Volume = math.Max(0, m.Input.Volume-volumeRate)
+			}
+			if m.Play != nil {
+				id := m.Input.Items[m.Input.Selected].Id
+				go pw.ChangeVolume(id, m.Input.Volume)
+			}
+			return m, nil
+
+		// Input Volume
+		case "d":
+			if m.Input.Volume < 1.0 {
+				m.Input.Volume += volumeRate
+			}
+			if m.Play != nil {
+				id := m.Input.Items[m.Input.Selected].Id
+				go pw.ChangeVolume(id, m.Input.Volume)
+			}
+			return m, nil
+
+		//Interactions
+		// The "up" and "k" keys move the cursor up
+		case "up", "k":
+			if m.Play == nil && m.Cursor > 0 {
+				m.Cursor--
+			}
+			return m, nil
+
+		// kill the currently proccess of playing
+		case "x":
+			m.MainModel = pw.KillProcesses(m.MainModel)
+			return m, nil
 
 		// The "enter" key and the space bar toggle the selected state
 		case "enter", "space":
-			if m.Cursor < len(m.Input.Items) {
-				m.Input.Selected = m.Cursor
-			} else {
-				m.Output.Selected = m.Cursor - len(m.Input.Items)
+			if m.Play == nil {
+				if m.Cursor < len(m.Input.Items) {
+					m.Input.Selected = m.Cursor
+				} else {
+					m.Output.Selected = m.Cursor - len(m.Input.Items)
+				}
 			}
+			return m, nil
 		}
 	}
 
@@ -128,10 +159,39 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m MainModel) View() tea.View {
-	if m.PlayProcess != nil {
-		return tea.NewView(interfaces.Playing(m.MainModel))
+
+	var header strings.Builder
+	var view strings.Builder
+	var actions strings.Builder
+
+	actions.WriteString("Increase Input  Vol: d")
+	actions.WriteString("\nDecrease Input  Vol: a")
+	actions.WriteString("\nIncrease Output Vol: right")
+	actions.WriteString("\nDecrease Output Vol: left")
+
+	if m.Play != nil {
+		view.WriteString(interfaces.Playing(m.MainModel))
+		actions.WriteString("\nx: Stop\nq: quit")
+	} else {
+		view.WriteString(interfaces.ListItems(m.MainModel))
+		actions.WriteString("\np: play\nr: refresh lists\nq: quit")
 	}
-	return tea.NewView(interfaces.ListItems(m.MainModel))
+
+	header.WriteString(interfaces.Header())
+	left := lipgloss.NewStyle().Width(70).Render(view.String())
+	right := lipgloss.NewStyle().MarginLeft(2).Render(actions.String())
+
+	content := lipgloss.JoinHorizontal(lipgloss.Left, left, right)
+	if m.Width < 110 {
+		content = lipgloss.JoinVertical(lipgloss.Top, left, right)
+	}
+
+	finalScreen := lipgloss.JoinVertical(lipgloss.Top, header.String(), content)
+	viewBorder := interfaces.Border(m.Padding, m.Width).Render(finalScreen)
+
+	screen := tea.NewView(viewBorder)
+	screen.AltScreen = true
+	return screen
 }
 
 func main() {

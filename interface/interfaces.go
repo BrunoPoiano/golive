@@ -6,27 +6,34 @@ import (
 	"math"
 	"strconv"
 	"strings"
+
+	"charm.land/lipgloss/v2"
 )
+
+func Header() string {
+
+	return lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#50C878")).
+		Render(".:GoLive:.\n")
+}
 
 func Playing(m models.MainModel) string {
 
-	var s string
-	s += fmt.Sprintf("Meter: %s\n", generateMeter(m.Level))
-	s += "\nPlaying\n"
-	s += fmt.Sprintf(" Input: %s\n", fixName(m.Input.Items[m.Input.Selected]))
-	s += fmt.Sprintf("Output: %s\n", fixName(m.Output.Items[m.Output.Selected]))
-	s += "\n Press s to Stop\n"
+	var s strings.Builder
+	fmt.Fprintf(&s, "%s\n", generateMeter(m.Level.Value))
+	// fmt.Fprintf(&s, "debug %d\n", m.Input.Items[m.Input.Selected].Id)
+	s.WriteString("\nPlaying\n")
+	fmt.Fprintf(&s, " Input: %d%% | %s\n", int(m.Input.Volume*100/1), (m.Input.Items[m.Input.Selected].Info.Props.NodeDescription))
+	fmt.Fprintf(&s, "Output: %d%% | %s\n", int(m.Output.Volume*100/1), (m.Output.Items[m.Output.Selected].Info.Props.NodeDescription))
 
-	return s
+	return s.String()
 }
 
 func ListItems(m models.MainModel) string {
-	// The header
 
-	var s string
+	var s strings.Builder
 	// s = fmt.Sprintf("debug: %s\n", m.Debug)
-	s += "Select Input:\n"
-
+	fmt.Fprintf(&s, "Inputs: %d%%\n", int(m.Input.Volume*100/1))
 	// Iterate over our choices
 	for i, choice := range m.Input.Items {
 
@@ -43,10 +50,10 @@ func ListItems(m models.MainModel) string {
 		}
 
 		// Render the row
-		s += fmt.Sprintf("%s [%s] %s\n", cursor, checked, fixName(choice))
+		fmt.Fprintf(&s, "%s [%s] %s\n", cursor, checked, choice.Info.Props.NodeDescription)
 	}
 
-	s += "\nSelect output:\n"
+	fmt.Fprintf(&s, "\nOutputs: %d%%\n", int(m.Output.Volume*100/1))
 
 	for i, choice := range m.Output.Items {
 
@@ -63,23 +70,25 @@ func ListItems(m models.MainModel) string {
 		}
 
 		// Render the row
-		s += fmt.Sprintf("%s [%s] %s\n", cursor, checked, fixName(choice))
+		fmt.Fprintf(&s, "%s [%s] %s\n", cursor, checked, choice.Info.Props.NodeDescription)
 	}
 
-	// The footer
-	s += "\nPress p to play.\n"
-	s += "Press r to refresh items.\n"
-	s += "Press q to quit.\n"
-
-	// Send the UI for rendering
-	return s
+	return s.String()
 }
 
-func fixName(name string) string {
-	splited := strings.Split(name, ".")
-
-	return fmt.Sprintf("%s | %s ", splited[len(splited)-1], splited[1])
-}
+var ruler string = fmt.Sprintf("%s%s%s", lipgloss.NewStyle().
+	Foreground(lipgloss.Color("#FF4800")).
+	Render(fmt.Sprintf("%s6", strings.Repeat("-", 5))),
+	lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#F1FF00")).
+		Render(fmt.Sprintf("%s12%s", strings.Repeat("-", 5), strings.Repeat("-", 4))),
+	lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#50C878")).
+		Render(fmt.Sprintf("18%s24%s30%s36%s42%s48%s54%s60%s",
+			strings.Repeat("-", 4), strings.Repeat("-", 4), strings.Repeat("-", 4),
+			strings.Repeat("-", 4), strings.Repeat("-", 4), strings.Repeat("-", 4),
+			strings.Repeat("-", 6), strings.Repeat("-", 6))),
+)
 
 func generateMeter(peakLevel string) string {
 
@@ -89,23 +98,25 @@ func generateMeter(peakLevel string) string {
 	}
 
 	value = math.Floor(value * -1)
-	if value < 1 {
-		value = 1
-	}
-	if value > 80 {
-		value = 80
-	}
-
-	var meter string
-
-	ruler := fmt.Sprintf("%s6%s12%s18%s24%s30%s36%s42%s48%s54%s",
-		strings.Repeat("-", 5), strings.Repeat("-", 5), strings.Repeat("-", 4),
-		strings.Repeat("-", 4), strings.Repeat("-", 4), strings.Repeat("-", 4),
-		strings.Repeat("-", 4), strings.Repeat("-", 4), strings.Repeat("-", 4),
-		strings.Repeat("-", 6))
+	value = math.Max(0, math.Min(66, value))
 
 	live := strings.Repeat("|", int(value))
 
-	meter += fmt.Sprintf("\n%s\n%s\n%s", ruler, live, ruler)
-	return meter
+	return fmt.Sprintf("%s\n%s\n%s", ruler, live, ruler)
+}
+
+func WidthCalc(m models.MainModel, v_width float64) int {
+	width := (float64(m.Width) * v_width) - float64(m.Padding)
+	return int(width)
+}
+
+func Border(padding, width int) lipgloss.Style {
+	return lipgloss.NewStyle().
+		BorderStyle(lipgloss.NormalBorder()).
+		PaddingTop(padding / 2).
+		PaddingBottom(padding / 2).
+		PaddingRight(padding).
+		PaddingLeft(padding).
+		Width(width).
+		BorderForeground(lipgloss.Color("#50C878"))
 }
