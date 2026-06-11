@@ -19,34 +19,22 @@ func Header() string {
 
 func Playing(m models.MainModel) string {
 
-	var s string
-	// s = fmt.Sprintf("debug: %s\n", m.Debug)
-	s += fmt.Sprintf("%s\n", generateMeter(m.Level.Value))
-	s += "\nPlaying\n"
-	s += fmt.Sprintf(" Input: %s\n", fixName(m.Input.Items[m.Input.Selected]))
-	s += fmt.Sprintf("Output: %s\n", fixName(m.Output.Items[m.Output.Selected]))
+	var s strings.Builder
+	fmt.Fprintf(&s, "%s\n", generateMeter(m.Level.Value))
+	fmt.Fprintf(&s, "debug %d\n", m.Input.Items[m.Input.Selected].Id)
+	s.WriteString("\nPlaying\n")
+	fmt.Fprintf(&s, " Input: %d%% %s\n", int(m.Input.Volume*100/1), (m.Input.Items[m.Input.Selected].Info.Props.NodeDescription))
+	fmt.Fprintf(&s, "Output: %d%% %s\n", int(m.Output.Volume*100/1), (m.Output.Items[m.Output.Selected].Info.Props.NodeDescription))
 
-	return s
-}
-
-func Volume(value float64, input bool) string {
-
-	node := "Input"
-	if !input {
-		node = "Output"
-	}
-	var s string
-	s += fmt.Sprintf("%6s Volume: %d%%\n", node, int(value*100/1))
-	return s
+	return s.String()
 }
 
 func ListItems(m models.MainModel) string {
 	// The header
 
-	var s string
+	var s strings.Builder
 	// s = fmt.Sprintf("debug: %s\n", m.Debug)
-	s += "Inputs:\n"
-
+	fmt.Fprintf(&s, "Inputs: %d%%\n", int(m.Input.Volume*100/1))
 	// Iterate over our choices
 	for i, choice := range m.Input.Items {
 
@@ -63,10 +51,10 @@ func ListItems(m models.MainModel) string {
 		}
 
 		// Render the row
-		s += fmt.Sprintf("%s [%s] %s\n", cursor, checked, fixName(choice))
+		fmt.Fprintf(&s, "%s [%s] %s\n", cursor, checked, choice.Info.Props.NodeDescription)
 	}
 
-	s += "\nOutputs:\n"
+	fmt.Fprintf(&s, "\nOutputs: %d%%\n", int(m.Output.Volume*100/1))
 
 	for i, choice := range m.Output.Items {
 
@@ -83,16 +71,17 @@ func ListItems(m models.MainModel) string {
 		}
 
 		// Render the row
-		s += fmt.Sprintf("%s [%s] %s\n", cursor, checked, fixName(choice))
+		fmt.Fprintf(&s, "%s [%s] %s\n", cursor, checked, choice.Info.Props.NodeDescription)
 	}
 
-	return s
+	return s.String()
 }
 
 func fixName(name string) string {
 	splited := strings.Split(name, ".")
 
-	return fmt.Sprintf("%13s | %s ", splited[len(splited)-1], splited[1])
+	audioType := strings.ReplaceAll(splited[len(splited)-1], "-", " ")
+	return fmt.Sprintf("%13s | %s ", audioType, splited[1])
 }
 
 var ruler string = fmt.Sprintf("%s%s%s", lipgloss.NewStyle().

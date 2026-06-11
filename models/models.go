@@ -19,26 +19,34 @@ type MainModel struct {
 	Height  int
 }
 
+type PwDump struct {
+	Id   int `json:"id"`
+	Info struct {
+		Props struct {
+			NodeId          int    `json:"node.driver-id"`
+			NodeName        string `json:"node.name"`
+			NodeNick        string `json:"node.nick"`
+			NodeDescription string `json:"node.description"`
+			NodeGroup       string `json:"node.group"`
+		} `json:"props"`
+	} `json:"info"`
+}
+
 type Level struct {
 	Process *exec.Cmd
 	Value   string
 }
 
 type Input struct {
-	Items    []string
+	Items    []PwDump
 	Selected int
-	Volume   Volume
+	Volume   float64
 }
 
 type Output struct {
-	Items    []string
+	Items    []PwDump
 	Selected int
-	Volume   Volume
-}
-
-type Volume struct {
-	NodeId string
-	Value  float64
+	Volume   float64
 }
 
 type PwLinks string

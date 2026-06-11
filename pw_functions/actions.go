@@ -2,44 +2,48 @@ package pw
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"main/models"
 	"os/exec"
-	"slices"
+	"strconv"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
 )
 
-func ReturnList(t models.PwLinks) ([]string, error) {
+func ReturnList(t models.PwLinks) ([]models.PwDump, error) {
 
-	var inputs []string
-	pwInputs, err := exec.Command("pw-link", string(t)).Output()
+	var list []models.PwDump
+	var dump []models.PwDump
+
+	pwInputs, err := exec.Command("pw-dump").Output()
 	if err != nil {
-		return inputs, fmt.Errorf("Error getting inputs")
 	}
 
-	stdOut := string(pwInputs)
+	if err := json.Unmarshal(pwInputs, &dump); err != nil {
+		panic(err)
+	}
+
 	pwtype := "alsa_input"
 
 	if string(t) == string(models.OutputList) {
 		pwtype = "alsa_output"
 	}
 
-	for item := range strings.SplitSeq(stdOut, "\n") {
-		if strings.Contains(item, pwtype) {
-			input, _, found := strings.Cut(item, ":")
-
-			if found && !slices.Contains(inputs, input) {
-				inputs = append(inputs, input)
-			}
+	for _, item := range dump {
+		if strings.Contains(item.Info.Props.NodeName, pwtype) {
+			list = append(list, item)
 		}
 	}
 
-	return inputs, nil
+	return list, nil
 }
 
-func Play(input, output string) *exec.Cmd {
+func Play(m models.MainModel) *exec.Cmd {
+	input := m.Input.Items[m.Input.Selected].Info.Props.NodeName
+	output := m.Output.Items[m.Output.Selected].Info.Props.NodeName
+
 	capture := fmt.Sprintf("--capture-props=node.target=%s", input)
 	playback := fmt.Sprintf("--playback-props=node.target=%s", output)
 
@@ -137,9 +141,9 @@ func getNodeId(lines []string, index int) string {
 	return ""
 }
 
-func ChangeVolume(volume models.Volume) {
-	volumeCmd := fmt.Sprintf("{ mute: false, channelVolumes: [ %f, %f ] }", volume.Value, volume.Value)
-	exec.Command("pw-cli", "s", volume.NodeId, "Props", volumeCmd).Start()
+func ChangeVolume(id int, volume float64) {
+	volumeCmd := fmt.Sprintf("{ mute: false, channelVolumes: [ %f, %f ] }", volume, volume)
+	exec.Command("pw-cli", "s", strconv.Itoa(id), "Props", volumeCmd).Start()
 }
 
 func RefresLists(m models.MainModel) models.MainModel {

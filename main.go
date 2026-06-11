@@ -7,6 +7,7 @@ import (
 	pw "main/pw_functions"
 	"math"
 	"os"
+	"strings"
 
 	tea "charm.land/bubbletea/v2"
 )
@@ -26,16 +27,12 @@ func initialModel() MainModel {
 			Padding: 2,
 			Cursor:  0,
 			Input: models.Input{
-				Items: lists.Input.Items,
-				Volume: models.Volume{
-					Value: 1.0,
-				},
+				Items:  lists.Input.Items,
+				Volume: 1.0,
 			},
 			Output: models.Output{
-				Items: lists.Output.Items,
-				Volume: models.Volume{
-					Value: 1.0,
-				},
+				Items:  lists.Output.Items,
+				Volume: 1.0,
 			},
 		},
 	}
@@ -68,10 +65,9 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Play the currently setup
 		case "p":
 			if m.Play == nil {
-				m.Play = pw.Play(m.Input.Items[m.Input.Selected], m.Output.Items[m.Output.Selected])
+				m.Play = pw.Play(m.MainModel)
 				m.Debug = fmt.Sprintf("%d", m.Play.Process.Pid)
-				m.Level.Process = pw.MonitorChanel(program, m.Input.Items[m.Input.Selected])
-				m.Input.Volume.NodeId, m.Output.Volume.NodeId = pw.GetActiveNodes(m.Play.Process.Pid)
+				m.Level.Process = pw.MonitorChanel(program, m.Input.Items[m.Input.Selected].Info.Props.NodeName)
 			}
 			return m, nil
 
@@ -88,36 +84,40 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case "left":
-			if m.Output.Volume.Value > 0 {
-				m.Output.Volume.Value = math.Max(0, m.Output.Volume.Value-volumeRate)
+			if m.Output.Volume > 0 {
+				m.Output.Volume = math.Max(0, m.Output.Volume-volumeRate)
 			}
-			if m.Output.Volume.NodeId != "" {
-				go pw.ChangeVolume(m.Output.Volume)
+			if m.Play != nil {
+				id := m.Output.Items[m.Output.Selected].Info.Props.NodeId
+				go pw.ChangeVolume(id, m.Output.Volume)
 			}
 			return m, nil
 		case "right":
-			if m.Output.Volume.Value < 1.0 {
-				m.Output.Volume.Value += volumeRate
+			if m.Output.Volume < 1.0 {
+				m.Output.Volume += volumeRate
 			}
-			if m.Output.Volume.NodeId != "" {
-				go pw.ChangeVolume(m.Output.Volume)
+			if m.Play != nil {
+				id := m.Output.Items[m.Output.Selected].Info.Props.NodeId
+				go pw.ChangeVolume(id, m.Output.Volume)
 			}
 			return m, nil
 
 		case "a":
-			if m.Input.Volume.Value > 0 {
-				m.Input.Volume.Value = math.Max(0, m.Input.Volume.Value-volumeRate)
+			if m.Input.Volume > 0 {
+				m.Input.Volume = math.Max(0, m.Input.Volume-volumeRate)
 			}
-			if m.Input.Volume.NodeId != "" {
-				go pw.ChangeVolume(m.Input.Volume)
+			if m.Play != nil {
+				id := m.Input.Items[m.Input.Selected].Id
+				go pw.ChangeVolume(id, m.Input.Volume)
 			}
 			return m, nil
 		case "d":
-			if m.Input.Volume.Value < 1.0 {
-				m.Input.Volume.Value += volumeRate
+			if m.Input.Volume < 1.0 {
+				m.Input.Volume += volumeRate
 			}
-			if m.Input.Volume.NodeId != "" {
-				go pw.ChangeVolume(m.Input.Volume)
+			if m.Play != nil {
+				id := m.Input.Items[m.Input.Selected].Id
+				go pw.ChangeVolume(id, m.Input.Volume)
 			}
 			return m, nil
 
@@ -155,31 +155,27 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m MainModel) View() tea.View {
 
-	var view string
+	var view strings.Builder
 
-	view += interfaces.Header()
-	view += "\n"
+	view.WriteString(interfaces.Header())
+	view.WriteString("\n")
 	if m.Play != nil {
-		view += interfaces.Playing(m.MainModel)
+		view.WriteString(interfaces.Playing(m.MainModel))
 	} else {
-		view += interfaces.ListItems(m.MainModel)
+		view.WriteString(interfaces.ListItems(m.MainModel))
 	}
-	view += "\n"
-
-	view += interfaces.Volume(m.Input.Volume.Value, true)
-	view += interfaces.Volume(m.Output.Volume.Value, false)
-
-	view += "\n\n   a:  decrease input volume |     d: increase input volume"
-	view += "\nleft: decrease output volume | right: increase output volume"
+	view.WriteString("\n   a:  decrease input volume |     d: increase input volume")
+	view.WriteString("\nleft: decrease output volume | right: increase output volume")
 
 	if m.Play != nil {
-		view += "\nx: Stop | q: quit"
+		view.WriteString("\nx: Stop | q: quit")
 	} else {
-		view += "\np: play | r: refresh lists | q: quit"
+		view.WriteString("\np: play | r: refresh lists | q: quit")
 	}
-	view = interfaces.Border(m.Padding, m.Width).Render(view)
 
-	screen := tea.NewView(view)
+	viewBorder := interfaces.Border(m.Padding, m.Width).Render(view.String())
+
+	screen := tea.NewView(viewBorder)
 	screen.AltScreen = true
 	return screen
 }
