@@ -2,6 +2,7 @@ package pw
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"main/models"
@@ -12,27 +13,22 @@ import (
 	tea "charm.land/bubbletea/v2"
 )
 
-func ReturnList(t models.PwLinks) ([]models.PwDump, error) {
+func ReturnList(stream models.PwLinks) ([]models.PwDump, error) {
 
 	var list []models.PwDump
 	var dump []models.PwDump
 
 	pwInputs, err := exec.Command("pw-dump").Output()
 	if err != nil {
+		return list, fmt.Errorf("Error getting list")
 	}
 
 	if err := json.Unmarshal(pwInputs, &dump); err != nil {
 		return list, fmt.Errorf("Error parsing list")
 	}
 
-	pwtype := "alsa_input"
-
-	if string(t) == string(models.OutputList) {
-		pwtype = "alsa_output"
-	}
-
 	for _, item := range dump {
-		if strings.Contains(item.Info.Props.NodeName, pwtype) {
+		if item.Info.Props.Stream == string(stream) {
 			list = append(list, item)
 		}
 	}
@@ -40,88 +36,131 @@ func ReturnList(t models.PwLinks) ([]models.PwDump, error) {
 	return list, nil
 }
 
-func Play(m models.MainModel) *exec.Cmd {
+func Play(p *tea.Program, m models.MainModel) models.MainModel {
+
 	input := m.Input.Items[m.Input.Selected].Info.Props.NodeName
 	output := m.Output.Items[m.Output.Selected].Info.Props.NodeName
 
 	capture := fmt.Sprintf("--capture-props=node.target=%s", input)
 	playback := fmt.Sprintf("--playback-props=node.target=%s", output)
 
-	cmd := exec.Command("pw-loopback", capture, playback)
+	ctx, cancel := context.WithCancel(context.Background())
 
-	cmd.Start()
-	go ChangeVolume(m.Input.Items[m.Input.Selected].Id, m.Input.Volume)
-	go ChangeVolume(m.Output.Items[m.Output.Selected].Id, m.Output.Volume)
-	return cmd
-}
+	m.Play.Cancel = cancel
+	m.Play.Cmd = exec.CommandContext(ctx, "pw-loopback", capture, playback)
 
-func MonitorChanel(p *tea.Program, input string) *exec.Cmd {
-	cmd := exec.Command(
-		"ffmpeg",
-		"-f", "pulse",
-		"-i", input,
-		"-af", "astats=metadata=1:reset=1,ametadata=print:key=lavfi.astats.Overall.Peak_level",
-		"-f", "null",
-		"-")
-
-	output, err := cmd.StderrPipe()
+	err := m.Play.Cmd.Start()
 	if err != nil {
-		panic(err)
-	}
-	cmd.Start()
-
-	scanner := bufio.NewScanner(output)
-
-	if err := scanner.Err(); err != nil {
-		p.Send(models.LevelMsg("Error getting level"))
+		p.Send(models.ErrorMsg(err))
+		return m
 	}
 
 	go func() {
+		err := ChangeVolume(m.Input.Items[m.Input.Selected].Id, m.Input.Volume)
+		if err != nil {
+			p.Send(models.ErrorMsg(err))
+		}
+		err = ChangeVolume(m.Output.Items[m.Output.Selected].Id, m.Output.Volume)
+		if err != nil {
+			p.Send(models.ErrorMsg(err))
+		}
+
+	}()
+
+	return m
+}
+
+func MonitorChannel(p *tea.Program, m models.MainModel) models.MainModel {
+
+	input := m.Input.Items[m.Input.Selected].Info.Props.NodeName
+	ctx, cancel := context.WithCancel(context.Background())
+
+	m.Level.Action.Cancel = cancel
+	m.Level.Action.Cmd = exec.CommandContext(ctx,
+		"ffmpeg",
+		"-f", "pulse",
+		"-i", input,
+		"-af", "astats=metadata=1:reset=1,ametadata=mode=print",
+		"-f", "null",
+		"-")
+
+	output, err := m.Level.Action.Cmd.StderrPipe()
+	if err != nil {
+		p.Send(models.ErrorMsg(fmt.Errorf("Error getting level")))
+	}
+
+	m.Level.Action.Cmd.Start()
+	scanner := bufio.NewScanner(output)
+
+	go func() {
+		level := models.LevelMsg{
+			PeakLevel: "0.0",
+			RMSLevel:  "0.0",
+		}
 		for scanner.Scan() {
 			line := scanner.Text()
-
-			if strings.Contains(line, "Peak_level=") {
-				_, level, found := strings.Cut(line, "Peak_level=")
+			if strings.Contains(line, "RMS_level=") {
+				_, rmsLevel, found := strings.Cut(line, "RMS_level=")
 				if found {
-					p.Send(models.LevelMsg(level))
+					level.RMSLevel = rmsLevel
 				}
 			}
+			if strings.Contains(line, "Peak_level=") {
+				_, peakLevel, found := strings.Cut(line, "Peak_level=")
+				if found {
+					level.PeakLevel = peakLevel
+				}
+			}
+			p.Send(models.LevelMsg(level))
 		}
 	}()
 
-	return cmd
-}
-
-func KillProcesses(m models.MainModel) models.MainModel {
-	if m.Play != nil && m.Play.Process != nil {
-		m.Play.Process.Kill()
-		m.Play = nil
-	}
-	if m.Level.Process != nil && m.Level.Process.Process != nil {
-		m.Level.Process.Process.Kill()
-		m.Level.Process = nil
+	if err := scanner.Err(); err != nil {
+		p.Send(models.ErrorMsg(fmt.Errorf("Error getting level")))
 	}
 
 	return m
 }
 
-func ChangeVolume(id int, volume float64) {
-	volumeCmd := fmt.Sprintf("{ mute: false, channelVolumes: [ %f, %f ] }", volume, volume)
-	exec.Command("pw-cli", "s", strconv.Itoa(id), "Props", volumeCmd).Start()
-}
-
-func RefresLists(m models.MainModel) models.MainModel {
-	inputsList, err := ReturnList(models.InputList)
-	if err != nil {
-		panic(err.Error())
-	}
-	outputList, err := ReturnList(models.OutputList)
-	if err != nil {
-		panic(err.Error())
+func KillProcesses(p *tea.Program, m models.MainModel) models.MainModel {
+	if err := stop(&m.Play); err != nil {
+		p.Send(models.ErrorMsg(fmt.Errorf("Error killing play process")))
 	}
 
-	m.Input.Items = inputsList
-	m.Output.Items = outputList
+	if err := stop(&m.Level.Action); err != nil {
+		p.Send(models.ErrorMsg(fmt.Errorf("Error level meter process")))
+	}
 
 	return m
+}
+
+func ChangeVolume(id int, volume models.Volume) error {
+
+	mute := "false"
+	if volume.Mute {
+		mute = "true"
+	}
+
+	volumeCmd := fmt.Sprintf("{ mute: %s, channelVolumes: [ %f, %f ] }", mute, volume.Value, volume.Value)
+	start := exec.Command("pw-cli", "s", strconv.Itoa(id), "Props", volumeCmd)
+	err := start.Start()
+	if err != nil {
+		return err
+	}
+	return start.Wait()
+}
+
+func RefreshLists(m models.MainModel) (models.MainModel, error) {
+	var err error
+	m.Input.Selected = 0
+	m.Output.Selected = 0
+	m.Input.Items, err = ReturnList(models.CaptureList)
+	if err != nil {
+		return m, fmt.Errorf("Error getting inputs")
+	}
+	m.Output.Items, err = ReturnList(models.PlaybackList)
+	if err != nil {
+		return m, fmt.Errorf("Error getting outputs")
+	}
+	return m, nil
 }

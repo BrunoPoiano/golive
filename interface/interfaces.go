@@ -18,13 +18,35 @@ func Header() string {
 }
 
 func Playing(m models.MainModel) string {
-
 	var s strings.Builder
-	fmt.Fprintf(&s, "%s\n", generateMeter(m.Level.Value))
-	// fmt.Fprintf(&s, "debug %d\n", m.Input.Items[m.Input.Selected].Id)
-	s.WriteString("\nPlaying\n")
-	fmt.Fprintf(&s, " Input: %d%% | %s\n", int(m.Input.Volume*100/1), (m.Input.Items[m.Input.Selected].Info.Props.NodeDescription))
-	fmt.Fprintf(&s, "Output: %d%% | %s\n", int(m.Output.Volume*100/1), (m.Output.Items[m.Output.Selected].Info.Props.NodeDescription))
+
+	inputPercent := calcVolumePercent(m.Input.Volume.Value)
+	outputPercent := calcVolumePercent(m.Output.Volume.Value)
+
+	RMSLevel, err := strconv.ParseFloat(m.Level.RMSLevel, 64)
+	if math.IsInf(RMSLevel, 0) {
+		fmt.Fprintf(&s, "Raw RMS Level: 0.0 dBFS\n")
+	} else if err == nil {
+		fmt.Fprintf(&s, "Raw RMS Level: %.1f dBFS\n", RMSLevel)
+	}
+
+	PeakLevel, err := strconv.ParseFloat(m.Level.PeakLevel, 64)
+	if math.IsInf(RMSLevel, 0) {
+		fmt.Fprintf(&s, "Raw Signal Peak: 0.0 dBFS")
+		fmt.Fprintf(&s, "\n%s", generateMeter(0.0))
+	} else if err == nil {
+		fmt.Fprintf(&s, "Raw Signal Peak: %.1f dBFS", PeakLevel)
+		fmt.Fprintf(&s, "\n%s", generateMeter(PeakLevel))
+	}
+
+	fmt.Fprintf(&s, "\n\n Input: %s (%d%%)", (m.Input.Items[m.Input.Selected].Info.Props.NodeDescription), inputPercent)
+	fmt.Fprintf(&s, "\nOutput: %s (%d%%)", (m.Output.Items[m.Output.Selected].Info.Props.NodeDescription), outputPercent)
+
+	//gain
+	fmt.Fprintf(&s, "\n\n Input Gain: (%.1fdb)\n", AmplitudeToDB(m.Input.Volume.Value))
+	s.WriteString(generateGain(inputPercent, 200))
+	fmt.Fprintf(&s, "\nOutput Gain: (%.1fdb)\n", AmplitudeToDB(m.Output.Volume.Value))
+	s.WriteString(generateGain(outputPercent, 200))
 
 	return s.String()
 }
@@ -33,7 +55,7 @@ func ListItems(m models.MainModel) string {
 
 	var s strings.Builder
 	// s = fmt.Sprintf("debug: %s\n", m.Debug)
-	fmt.Fprintf(&s, "Inputs: %d%%\n", int(m.Input.Volume*100/1))
+	fmt.Fprintf(&s, "Inputs: %d%%\n", int(m.Input.Volume.Value*100/1))
 	// Iterate over our choices
 	for i, choice := range m.Input.Items {
 
@@ -53,7 +75,7 @@ func ListItems(m models.MainModel) string {
 		fmt.Fprintf(&s, "%s [%s] %s\n", cursor, checked, choice.Info.Props.NodeDescription)
 	}
 
-	fmt.Fprintf(&s, "\nOutputs: %d%%\n", int(m.Output.Volume*100/1))
+	fmt.Fprintf(&s, "\nOutputs: %d%%\n", int(m.Output.Volume.Value*100/1))
 
 	for i, choice := range m.Output.Items {
 
@@ -74,35 +96,6 @@ func ListItems(m models.MainModel) string {
 	}
 
 	return s.String()
-}
-
-var ruler string = fmt.Sprintf("%s%s%s", lipgloss.NewStyle().
-	Foreground(lipgloss.Color("#FF4800")).
-	Render(fmt.Sprintf("%s6", strings.Repeat("-", 5))),
-	lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#F1FF00")).
-		Render(fmt.Sprintf("%s12%s", strings.Repeat("-", 5), strings.Repeat("-", 4))),
-	lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#50C878")).
-		Render(fmt.Sprintf("18%s24%s30%s36%s42%s48%s54%s60%s",
-			strings.Repeat("-", 4), strings.Repeat("-", 4), strings.Repeat("-", 4),
-			strings.Repeat("-", 4), strings.Repeat("-", 4), strings.Repeat("-", 4),
-			strings.Repeat("-", 6), strings.Repeat("-", 6))),
-)
-
-func generateMeter(peakLevel string) string {
-
-	value, err := strconv.ParseFloat(peakLevel, 32)
-	if err != nil || math.IsNaN(value) || math.IsInf(value, 0) {
-		value = 1
-	}
-
-	value = math.Floor(value * -1)
-	value = math.Max(0, math.Min(66, value))
-
-	live := strings.Repeat("|", int(value))
-
-	return fmt.Sprintf("%s\n%s\n%s", ruler, live, ruler)
 }
 
 func WidthCalc(m models.MainModel, v_width float64) int {
