@@ -20,9 +20,6 @@ func Header() string {
 func Playing(m models.MainModel) string {
 	var s strings.Builder
 
-	inputPercent := calcVolumePercent(m.Input.Volume.Value)
-	outputPercent := calcVolumePercent(m.Output.Volume.Value)
-
 	RMSLevel, err := strconv.ParseFloat(m.Level.RMSLevel, 64)
 	if math.IsInf(RMSLevel, 0) {
 		fmt.Fprintf(&s, "Raw RMS Level: 0.0 dBFS\n")
@@ -39,23 +36,25 @@ func Playing(m models.MainModel) string {
 		fmt.Fprintf(&s, "\n%s", generateMeter(PeakLevel))
 	}
 
-	fmt.Fprintf(&s, "\n\n Input: %s (%d%%)", (m.Input.Items[m.Input.Selected].Info.Props.NodeDescription), inputPercent)
-	fmt.Fprintf(&s, "\nOutput: %s (%d%%)", (m.Output.Items[m.Output.Selected].Info.Props.NodeDescription), outputPercent)
+	fmt.Fprintf(&s, "\n\n Input: %s", (m.Input.Items[m.Input.Selected].Info.Props.NodeDescription))
+	fmt.Fprintf(&s, "\nOutput: %s", (m.Output.Items[m.Output.Selected].Info.Props.NodeDescription))
 
 	//gain
 	fmt.Fprintf(&s, "\n\n Input Gain: (%.1fdb)\n", AmplitudeToDB(m.Input.Volume.Value))
-	s.WriteString(generateGain(inputPercent, 200))
+	s.WriteString(generateGain(m.Input.Volume.Value, 200))
 	fmt.Fprintf(&s, "\nOutput Gain: (%.1fdb)\n", AmplitudeToDB(m.Output.Volume.Value))
-	s.WriteString(generateGain(outputPercent, 200))
+	s.WriteString(generateGain(m.Output.Volume.Value, 200))
 
 	return s.String()
 }
 
 func ListItems(m models.MainModel) string {
 
+	inputPercent, _ := generateVolume((m.Input.Volume.Value))
+	outputPercent, _ := generateVolume((m.Output.Volume.Value))
 	var s strings.Builder
 	// s = fmt.Sprintf("debug: %s\n", m.Debug)
-	fmt.Fprintf(&s, "Inputs: %d%%\n", int(m.Input.Volume.Value*100/1))
+	fmt.Fprintf(&s, "Inputs%s\n", inputPercent)
 	// Iterate over our choices
 	for i, choice := range m.Input.Items {
 
@@ -75,7 +74,7 @@ func ListItems(m models.MainModel) string {
 		fmt.Fprintf(&s, "%s [%s] %s\n", cursor, checked, choice.Info.Props.NodeDescription)
 	}
 
-	fmt.Fprintf(&s, "\nOutputs: %d%%\n", int(m.Output.Volume.Value*100/1))
+	fmt.Fprintf(&s, "\nOutputs%s\n", outputPercent)
 
 	for i, choice := range m.Output.Items {
 

@@ -2,6 +2,7 @@ package interfaces
 
 import (
 	"fmt"
+	"main/models"
 	"math"
 	"strings"
 
@@ -9,13 +10,13 @@ import (
 )
 
 var ruler string = fmt.Sprintf("%s%s%s", lipgloss.NewStyle().
-	Foreground(lipgloss.Color("#FF4800")).
+	Foreground(lipgloss.Color(string(models.Danger))).
 	Render(fmt.Sprintf("%s6", strings.Repeat("-", 5))),
 	lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#F1FF00")).
+		Foreground(lipgloss.Color(string(models.Attention))).
 		Render(fmt.Sprintf("%s12%s", strings.Repeat("-", 5), strings.Repeat("-", 4))),
 	lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#50C878")).
+		Foreground(lipgloss.Color(string(models.Success))).
 		Render(fmt.Sprintf("18%s24%s30%s36%s42%s48%s54%s60%s",
 			strings.Repeat("-", 4), strings.Repeat("-", 4), strings.Repeat("-", 4),
 			strings.Repeat("-", 4), strings.Repeat("-", 4), strings.Repeat("-", 4),
@@ -37,26 +38,44 @@ func generateMeter(peakLevel float64) string {
 	return fmt.Sprintf("%s\n%s\n%s", ruler, live, ruler)
 }
 
-func generateGain(volume, maxValue int) string {
+func generateGain(volume float64, maxValue int) string {
+	percent, live := generateVolume(volume)
+	volumePercent := calcVolumePercent(volume)
 
-	var live string
-	var percent string
-	live += strings.Repeat("█", volume/4)
-	live += strings.Repeat("░", ((maxValue / 4) - (volume / 4)))
-
-	if volume > 150 {
-		percent = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#FF4800")).
-			Render(fmt.Sprintf(" (%d%%)", volume))
-	} else if volume > 100 {
-		percent = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#F1FF00")).
-			Render(fmt.Sprintf(" (%d%%)", volume))
-	} else {
-		percent = fmt.Sprintf(" (%d%%)", volume)
-	}
+	live += strings.Repeat("░", ((maxValue / 4) - (volumePercent / 4)))
 	live += percent
 	return fmt.Sprintf("%s", live)
+}
+
+func generateVolume(v float64) (string, string) {
+	volume := calcVolumePercent(v)
+
+	if volume > 150 {
+		return lipgloss.NewStyle().
+				Foreground(lipgloss.Color(string(models.Danger))).
+				Render(fmt.Sprintf(" (%d%%)", volume)),
+			lipgloss.NewStyle().
+				Foreground(lipgloss.Color(string(models.Danger))).
+				Render(strings.Repeat("█", volume/4))
+	}
+
+	if volume > 100 {
+		return lipgloss.NewStyle().
+				Foreground(lipgloss.Color(string(models.Attention))).
+				Render(fmt.Sprintf(" (%d%%)", volume)),
+			lipgloss.NewStyle().
+				Foreground(lipgloss.Color(string(models.Attention))).
+				Render(strings.Repeat("█", volume/4))
+
+	}
+
+	return lipgloss.NewStyle().
+			Foreground(lipgloss.Color(string(models.Success))).
+			Render(fmt.Sprintf(" (%d%%)", volume)),
+		lipgloss.NewStyle().
+			Foreground(lipgloss.Color(string(models.Success))).
+			Render(strings.Repeat("█", volume/4))
+
 }
 
 func calcVolumePercent(v float64) int {

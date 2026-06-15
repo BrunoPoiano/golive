@@ -70,3 +70,11 @@ const (
 	PlaybackList PwLinks = "playback"
 	CaptureList  PwLinks = "capture"
 )
+
+type AppColor string
+
+const (
+	Danger    AppColor = "#FF4800"
+	Attention AppColor = "#F1FF00"
+	Success   AppColor = "#50C878"
+)
