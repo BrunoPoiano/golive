@@ -2,9 +2,9 @@
 
 A terminal-based audio routing manager for PipeWire/PulseAudio systems. Easily select audio inputs and outputs, monitor audio levels with a real-time visual meter, and create audio loopbacks from your terminal.
 
-<img width="1008" height="375" alt="image" src="https://github.com/user-attachments/assets/3b323a24-e591-4367-a94f-e5817a3a4513" />
+<img width="1038" height="321" alt="image" src="https://github.com/user-attachments/assets/638c764a-b9b5-4e23-8ae2-37f5bcf87c65" />
+<img width="1037" height="357" alt="image" src="https://github.com/user-attachments/assets/a661e88d-7359-484c-a04e-6d46bd99db73" />
 
-<img width="1008" height="375" alt="image" src="https://github.com/user-attachments/assets/bb8b1dee-d9f3-4065-acab-89b889b3b1d6" />
 
 
 ## Features
