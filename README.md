@@ -6,7 +6,6 @@ A terminal-based audio routing manager for PipeWire/PulseAudio systems. Easily s
 <img width="1037" height="357" alt="image" src="https://github.com/user-attachments/assets/a661e88d-7359-484c-a04e-6d46bd99db73" />
 
 
-
 ## Features
 
 - **Audio Loopback**: Create loopback connections between selected input and output devices
@@ -48,15 +47,38 @@ go build -o golive
 
 ## Usage
 
-### Navigation
+### Keybindings
 
-- **Arrow Keys / j/k**: Move cursor up and down through inputs and outputs
+#### Navigation
+
+- **Arrow Keys / j/k**: Move cursor up and down through devices
 - **Space / Enter**: Select highlighted input or output
+
+#### Audio Control
+
 - **p**: Start audio loopback with selected input and output
-- **s**: Stop the currently running audio loopback
+- **x**: Stop the currently running audio loopback
+- **a**: Decrease input volume (gain)
+- **d**: Increase input volume (gain)
+- **← (Left Arrow)**: Decrease output volume (gain)
+- **→ (Right Arrow)**: Increase output volume (gain)
+- **n**: Toggle input mute
+- **m**: Toggle output mute
+
+#### Utilities
+
 - **r**: Refresh available audio devices
 - **q / Ctrl+C**: Quit the application
 
 ## Dependencies
 
 - [Bubble Tea v2](https://github.com/charmbracelet/bubbletea) - Terminal UI framework
+- [Lipgloss v2](https://github.com/charmbracelet/lipgloss) - Terminal styling and layout
+- ffmpeg
+- Standard Go libraries (context, os, exec, bufio, fmt, strings, math, encoding/json)
+
+## License
+
+MIT License - Copyright (c) 2026 Bruno Poiano
+
+See [LICENSE](LICENSE) file for details.
