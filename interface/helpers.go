@@ -3,7 +3,6 @@ package interfaces
 import (
 	"fmt"
 	"math"
-	"strconv"
 	"strings"
 
 	"charm.land/lipgloss/v2"
@@ -23,10 +22,10 @@ var ruler string = fmt.Sprintf("%s%s%s", lipgloss.NewStyle().
 			strings.Repeat("-", 6), strings.Repeat("-", 6))),
 )
 
-func generateMeter(peakLevel string) string {
+func generateMeter(peakLevel float64) string {
 
-	value, err := strconv.ParseFloat(peakLevel, 32)
-	if err != nil || math.IsNaN(value) || math.IsInf(value, 0) {
+	value := peakLevel
+	if math.IsNaN(value) || math.IsInf(value, 0) {
 		value = 1
 	}
 
@@ -36,4 +35,40 @@ func generateMeter(peakLevel string) string {
 	live := strings.Repeat("|", int(value))
 
 	return fmt.Sprintf("%s\n%s\n%s", ruler, live, ruler)
+}
+
+func generateGain(volume, maxValue int) string {
+
+	var live string
+	var percent string
+	live += strings.Repeat("█", volume/4)
+	live += strings.Repeat("░", ((maxValue / 4) - (volume / 4)))
+
+	if volume > 150 {
+		percent = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#FF4800")).
+			Render(fmt.Sprintf(" (%d%%)", volume))
+	} else if volume > 100 {
+		percent = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#F1FF00")).
+			Render(fmt.Sprintf(" (%d%%)", volume))
+	} else {
+		percent = fmt.Sprintf(" (%d%%)", volume)
+	}
+	live += percent
+	return fmt.Sprintf("%s", live)
+}
+
+func calcVolumePercent(v float64) int {
+	return int(v * 100 / 1)
+}
+
+func AmplitudeToDB(v float64) float64 {
+
+	calc := 20 * math.Log10(v)
+	if math.IsInf(calc, 0) {
+		return 20 * math.Log10(0.01)
+	}
+
+	return calc
 }

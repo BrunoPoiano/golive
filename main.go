@@ -13,6 +13,7 @@ import (
 )
 
 var program *tea.Program
+var maxVolume = 2.0
 var volumeRate = 0.01
 
 type MainModel struct {
@@ -28,12 +29,18 @@ func initialModel() MainModel {
 			Cursor:  0,
 			Error:   error,
 			Input: models.Input{
-				Items:  lists.Input.Items,
-				Volume: 1.0,
+				Items: lists.Input.Items,
+				Volume: models.Volume{
+					Value: 1.0,
+					Mute:  false,
+				},
 			},
 			Output: models.Output{
-				Items:  lists.Output.Items,
-				Volume: 1.0,
+				Items: lists.Output.Items,
+				Volume: models.Volume{
+					Value: 1.0,
+					Mute:  false,
+				},
 			},
 		},
 	}
@@ -53,10 +60,11 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.Height = msg.Height
 
 	case models.LevelMsg:
-		m.Level.Value = string(msg)
+		m.Level.PeakLevel = msg.PeakLevel
+		m.Level.RMSLevel = msg.RMSLevel
 
 	case models.ErrorMsg:
-		m.Error = fmt.Errorf(string(msg))
+		m.Error = msg
 
 	// key press actions
 	case tea.KeyPressMsg:
@@ -97,10 +105,22 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 
+		case "m":
+			m.Output.Volume.Mute = !m.Output.Volume.Mute
+			if m.Play.Cmd != nil {
+				id := m.Output.Items[m.Output.Selected].Id
+				go pw.ChangeVolume(id, m.Output.Volume)
+			}
+		case "n":
+			m.Input.Volume.Mute = !m.Input.Volume.Mute
+			if m.Play.Cmd != nil {
+				id := m.Input.Items[m.Input.Selected].Id
+				go pw.ChangeVolume(id, m.Input.Volume)
+			}
 		// output volume
 		case "left":
-			if m.Output.Volume > 0 {
-				m.Output.Volume = math.Max(0, m.Output.Volume-volumeRate)
+			if m.Output.Volume.Value > 0 {
+				m.Output.Volume.Value = math.Max(0, m.Output.Volume.Value-volumeRate)
 			}
 			if m.Play.Cmd != nil {
 				id := m.Output.Items[m.Output.Selected].Id
@@ -110,8 +130,8 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// output volume
 		case "right":
-			if m.Output.Volume < 1.0 {
-				m.Output.Volume = math.Min(1.0, m.Output.Volume+volumeRate)
+			if m.Output.Volume.Value < maxVolume {
+				m.Output.Volume.Value = math.Min(maxVolume, m.Output.Volume.Value+volumeRate)
 			}
 			if m.Play.Cmd != nil {
 				id := m.Output.Items[m.Output.Selected].Id
@@ -121,8 +141,8 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Input Volume
 		case "a":
-			if m.Input.Volume > 0 {
-				m.Input.Volume = math.Max(0, m.Input.Volume-volumeRate)
+			if m.Input.Volume.Value > 0 {
+				m.Input.Volume.Value = math.Max(0, m.Input.Volume.Value-volumeRate)
 			}
 			if m.Play.Cmd != nil {
 				id := m.Input.Items[m.Input.Selected].Id
@@ -132,8 +152,8 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Input Volume
 		case "d":
-			if m.Input.Volume < 1.0 {
-				m.Input.Volume = math.Min(1.0, m.Input.Volume+volumeRate)
+			if m.Input.Volume.Value < maxVolume {
+				m.Input.Volume.Value = math.Min(maxVolume, m.Input.Volume.Value+volumeRate)
 			}
 			if m.Play.Cmd != nil {
 				id := m.Input.Items[m.Input.Selected].Id
@@ -172,11 +192,13 @@ func (m MainModel) View() tea.View {
 	header, left, right := interfaces.View(m.MainModel)
 
 	left = lipgloss.NewStyle().Width(70).Render(left)
-	right = lipgloss.NewStyle().MarginLeft(2).Render(right)
 
 	content := lipgloss.JoinHorizontal(lipgloss.Left, left, right)
 	if m.Width < 110 {
+		right = lipgloss.NewStyle().MarginTop(1).Render(right)
 		content = lipgloss.JoinVertical(lipgloss.Top, left, right)
+	} else {
+		right = lipgloss.NewStyle().MarginLeft(2).Render(right)
 	}
 
 	finalScreen := lipgloss.JoinVertical(lipgloss.Top, header, content)

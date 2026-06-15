@@ -13,7 +13,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 )
 
-func ReturnList(t models.PwLinks) ([]models.PwDump, error) {
+func ReturnList(stream models.PwLinks) ([]models.PwDump, error) {
 
 	var list []models.PwDump
 	var dump []models.PwDump
@@ -27,14 +27,8 @@ func ReturnList(t models.PwLinks) ([]models.PwDump, error) {
 		return list, fmt.Errorf("Error parsing list")
 	}
 
-	pwtype := "alsa_input"
-
-	if string(t) == string(models.OutputList) {
-		pwtype = "alsa_output"
-	}
-
 	for _, item := range dump {
-		if strings.Contains(item.Info.Props.NodeName, pwtype) {
+		if item.Info.Props.Stream == string(stream) {
 			list = append(list, item)
 		}
 	}
@@ -57,18 +51,18 @@ func Play(p *tea.Program, m models.MainModel) models.MainModel {
 
 	err := m.Play.Cmd.Start()
 	if err != nil {
-		p.Send(models.ErrorMsg("Error starting player"))
+		p.Send(models.ErrorMsg(err))
 		return m
 	}
 
 	go func() {
 		err := ChangeVolume(m.Input.Items[m.Input.Selected].Id, m.Input.Volume)
 		if err != nil {
-			p.Send(models.ErrorMsg("Error changing input volume"))
+			p.Send(models.ErrorMsg(err))
 		}
-		ChangeVolume(m.Output.Items[m.Output.Selected].Id, m.Output.Volume)
+		err = ChangeVolume(m.Output.Items[m.Output.Selected].Id, m.Output.Volume)
 		if err != nil {
-			p.Send(models.ErrorMsg("Error changing output volume"))
+			p.Send(models.ErrorMsg(err))
 		}
 
 	}()
@@ -86,64 +80,85 @@ func MonitorChannel(p *tea.Program, m models.MainModel) models.MainModel {
 		"ffmpeg",
 		"-f", "pulse",
 		"-i", input,
-		"-af", "astats=metadata=1:reset=1,ametadata=print:key=lavfi.astats.Overall.Peak_level",
+		"-af", "astats=metadata=1:reset=1,ametadata=mode=print",
 		"-f", "null",
 		"-")
 
 	output, err := m.Level.Action.Cmd.StderrPipe()
 	if err != nil {
-		p.Send(models.LevelMsg("Error getting level"))
+		p.Send(models.ErrorMsg(fmt.Errorf("Error getting level")))
 	}
 
 	m.Level.Action.Cmd.Start()
 	scanner := bufio.NewScanner(output)
 
-	if err := scanner.Err(); err != nil {
-		p.Send(models.LevelMsg("Error getting level"))
-	}
-
 	go func() {
+		level := models.LevelMsg{
+			PeakLevel: "0.0",
+			RMSLevel:  "0.0",
+		}
 		for scanner.Scan() {
 			line := scanner.Text()
-
-			if strings.Contains(line, "Peak_level=") {
-				_, level, found := strings.Cut(line, "Peak_level=")
+			if strings.Contains(line, "RMS_level=") {
+				_, rmsLevel, found := strings.Cut(line, "RMS_level=")
 				if found {
-					p.Send(models.LevelMsg(level))
+					level.RMSLevel = rmsLevel
 				}
 			}
+			if strings.Contains(line, "Peak_level=") {
+				_, peakLevel, found := strings.Cut(line, "Peak_level=")
+				if found {
+					level.PeakLevel = peakLevel
+				}
+			}
+			p.Send(models.LevelMsg(level))
 		}
 	}()
+
+	if err := scanner.Err(); err != nil {
+		p.Send(models.ErrorMsg(fmt.Errorf("Error getting level")))
+	}
 
 	return m
 }
 
 func KillProcesses(p *tea.Program, m models.MainModel) models.MainModel {
 	if err := stop(&m.Play); err != nil {
-		p.Send(models.ErrorMsg("Error killing play process"))
+		p.Send(models.ErrorMsg(fmt.Errorf("Error killing play process")))
 	}
 
 	if err := stop(&m.Level.Action); err != nil {
-		p.Send(models.ErrorMsg("Error level meter process"))
+		p.Send(models.ErrorMsg(fmt.Errorf("Error level meter process")))
 	}
 
 	return m
 }
 
-func ChangeVolume(id int, volume float64) error {
-	volumeCmd := fmt.Sprintf("{ mute: false, channelVolumes: [ %f, %f ] }", volume, volume)
-	return exec.Command("pw-cli", "s", strconv.Itoa(id), "Props", volumeCmd).Start()
+func ChangeVolume(id int, volume models.Volume) error {
+
+	mute := "false"
+	if volume.Mute {
+		mute = "true"
+	}
+
+	volumeCmd := fmt.Sprintf("{ mute: %s, channelVolumes: [ %f, %f ] }", mute, volume.Value, volume.Value)
+	start := exec.Command("pw-cli", "s", strconv.Itoa(id), "Props", volumeCmd)
+	err := start.Start()
+	if err != nil {
+		return err
+	}
+	return start.Wait()
 }
 
 func RefreshLists(m models.MainModel) (models.MainModel, error) {
 	var err error
 	m.Input.Selected = 0
 	m.Output.Selected = 0
-	m.Input.Items, err = ReturnList(models.InputList)
+	m.Input.Items, err = ReturnList(models.CaptureList)
 	if err != nil {
 		return m, fmt.Errorf("Error getting inputs")
 	}
-	m.Output.Items, err = ReturnList(models.OutputList)
+	m.Output.Items, err = ReturnList(models.PlaybackList)
 	if err != nil {
 		return m, fmt.Errorf("Error getting outputs")
 	}

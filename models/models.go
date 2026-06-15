@@ -5,8 +5,11 @@ import (
 	"os/exec"
 )
 
-type LevelMsg string
-type ErrorMsg string
+type LevelMsg struct {
+	PeakLevel string
+	RMSLevel  string
+}
+type ErrorMsg error
 
 type MainModel struct {
 	Play   Action
@@ -31,35 +34,39 @@ type PwDump struct {
 	Id   int `json:"id"`
 	Info struct {
 		Props struct {
-			NodeId          int    `json:"node.driver-id"`
+			ObjectId        int    `json:"node.object.id"`
 			NodeName        string `json:"node.name"`
-			NodeNick        string `json:"node.nick"`
 			NodeDescription string `json:"node.description"`
-			NodeGroup       string `json:"node.group"`
+			Stream          string `json:"api.alsa.pcm.stream"`
 		} `json:"props"`
 	} `json:"info"`
 }
 
+type Volume struct {
+	Value float64
+	Mute  bool
+}
 type Level struct {
-	Action Action
-	Value  string
+	Action    Action
+	PeakLevel string
+	RMSLevel  string
 }
 
 type Input struct {
 	Items    []PwDump
 	Selected int
-	Volume   float64
+	Volume   Volume
 }
 
 type Output struct {
 	Items    []PwDump
 	Selected int
-	Volume   float64
+	Volume   Volume
 }
 
 type PwLinks string
 
 const (
-	OutputList PwLinks = "-i"
-	InputList  PwLinks = "-o"
+	PlaybackList PwLinks = "playback"
+	CaptureList  PwLinks = "capture"
 )

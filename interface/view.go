@@ -3,6 +3,8 @@ package interfaces
 import (
 	"main/models"
 	"strings"
+
+	"charm.land/lipgloss/v2"
 )
 
 func View(m models.MainModel) (string, string, string) {
@@ -32,7 +34,7 @@ func View(m models.MainModel) (string, string, string) {
 		return header, left.String(), right.String()
 	}
 
-	right.WriteString("Increase Input  Vol: d\nDecrease Input  Vol: a\nIncrease Output Vol: right\nDecrease Output Vol: left")
+	right.WriteString(actions(m))
 
 	if m.Play.Cmd != nil {
 		left.WriteString(Playing(m))
@@ -43,5 +45,34 @@ func View(m models.MainModel) (string, string, string) {
 	}
 
 	return header, left.String(), right.String()
+
+}
+
+func actions(m models.MainModel) string {
+
+	var input strings.Builder
+	var output strings.Builder
+
+	input.WriteString("Input\na d: Volume")
+
+	if m.Input.Volume.Mute {
+		input.WriteString("\nUnmute: n")
+	} else {
+		input.WriteString("\nMute: n")
+	}
+
+	output.WriteString("Output\n← →: Volume")
+	if m.Output.Volume.Mute {
+		output.WriteString("\nUnmute: m\n")
+	} else {
+		output.WriteString("\nMute: m\n")
+	}
+
+	left := input.String()
+	if m.Width > 110 {
+		left = lipgloss.NewStyle().MarginRight(2).Render(input.String())
+	}
+
+	return lipgloss.JoinHorizontal(lipgloss.Left, left, output.String())
 
 }
