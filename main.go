@@ -194,7 +194,7 @@ func (m MainModel) View() tea.View {
 	left = lipgloss.NewStyle().Width(70).Render(left)
 
 	content := lipgloss.JoinHorizontal(lipgloss.Left, left, right)
-	if m.Width < 110 {
+	if m.Width <= 110 {
 		right = lipgloss.NewStyle().MarginTop(1).Render(right)
 		content = lipgloss.JoinVertical(lipgloss.Top, left, right)
 	} else {

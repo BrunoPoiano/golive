@@ -68,10 +68,7 @@ func actions(m models.MainModel) string {
 		output.WriteString("\nMute: m\n")
 	}
 
-	left := input.String()
-	if m.Width > 110 {
-		left = lipgloss.NewStyle().MarginRight(2).Render(input.String())
-	}
+	left := lipgloss.NewStyle().MarginRight(2).Render(input.String())
 
 	return lipgloss.JoinHorizontal(lipgloss.Left, left, output.String())
 
