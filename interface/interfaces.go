@@ -11,9 +11,8 @@ import (
 )
 
 func Header() string {
-
 	return lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#50C878")).
+		Foreground(lipgloss.Color(string(models.Success))).
 		Render(".:GoLive:.\n")
 }
 
@@ -21,17 +20,19 @@ func Playing(m models.MainModel) string {
 	var s strings.Builder
 
 	RMSLevel, err := strconv.ParseFloat(m.Level.RMSLevel, 64)
-	if math.IsInf(RMSLevel, 0) {
+	switch {
+	case math.IsInf(RMSLevel, 0):
 		fmt.Fprintf(&s, "Raw RMS Level: 0.0 dBFS\n")
-	} else if err == nil {
+	case err == nil:
 		fmt.Fprintf(&s, "Raw RMS Level: %.1f dBFS\n", RMSLevel)
 	}
 
 	PeakLevel, err := strconv.ParseFloat(m.Level.PeakLevel, 64)
-	if math.IsInf(RMSLevel, 0) {
+	switch {
+	case math.IsInf(RMSLevel, 0):
 		fmt.Fprintf(&s, "Raw Signal Peak: 0.0 dBFS")
 		fmt.Fprintf(&s, "\n%s", generateMeter(0.0))
-	} else if err == nil {
+	case err == nil:
 		fmt.Fprintf(&s, "Raw Signal Peak: %.1f dBFS", PeakLevel)
 		fmt.Fprintf(&s, "\n%s", generateMeter(PeakLevel))
 	}
