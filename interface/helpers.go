@@ -23,7 +23,11 @@ var ruler string = fmt.Sprintf("%s%s%s", lipgloss.NewStyle().
 			strings.Repeat("-", 6), strings.Repeat("-", 6))),
 )
 
-func generateMeter(peakLevel float64) string {
+var dangerBar = lipgloss.NewStyle().
+	Foreground(lipgloss.Color(string(models.Danger))).
+	Render("|")
+
+func generateMeter(peakLevel, max float64) string {
 
 	value := peakLevel
 	if math.IsNaN(value) || math.IsInf(value, 0) {
@@ -34,6 +38,12 @@ func generateMeter(peakLevel float64) string {
 	value = math.Max(0, math.Min(66, value))
 
 	live := strings.Repeat("|", int(value))
+
+	intMax := int(math.Floor(max * -1))
+
+	if intMax > 0 && len(live) > intMax {
+		live = live[:intMax-1] + dangerBar + live[(intMax+1):]
+	}
 
 	return fmt.Sprintf("%s\n%s\n%s", ruler, live, ruler)
 }

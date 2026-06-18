@@ -3,6 +3,8 @@ package pw
 import (
 	"main/models"
 	"os/exec"
+	"strconv"
+	"strings"
 )
 
 func stop(p *models.Action) error {
@@ -34,4 +36,19 @@ func stop(p *models.Action) error {
 	p.Cancel = nil
 
 	return nil
+}
+
+func parseLevels(line, search string, defaultValue float64) float64 {
+	if strings.Contains(line, search) {
+		_, value, found := strings.Cut(line, search)
+		if found {
+			value64, err := strconv.ParseFloat(value, 64)
+			if err != nil {
+				return defaultValue
+			}
+			return value64
+		}
+	}
+
+	return defaultValue
 }

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"main/models"
 	"math"
-	"strconv"
 	"strings"
 
 	"charm.land/lipgloss/v2"
@@ -19,22 +18,22 @@ func Header() string {
 func Playing(m models.MainModel) string {
 	var s strings.Builder
 
-	RMSLevel, err := strconv.ParseFloat(m.Level.RMSLevel, 64)
 	switch {
-	case math.IsInf(RMSLevel, 0):
-		fmt.Fprintf(&s, "Raw RMS Level: 0.0 dBFS\n")
-	case err == nil:
-		fmt.Fprintf(&s, "Raw RMS Level: %.1f dBFS\n", RMSLevel)
+	case math.IsInf(m.Level.RMSLevel, 0):
+		fmt.Fprintf(&s, "Raw RMS Level   : 0.0 dBFS\n")
+	default:
+		fmt.Fprintf(&s, "Raw RMS Level   : %.1f dBFS\n", m.Level.RMSLevel)
 	}
 
-	PeakLevel, err := strconv.ParseFloat(m.Level.PeakLevel, 64)
 	switch {
-	case math.IsInf(RMSLevel, 0):
+	case math.IsInf(m.Level.PeakLevel, 0):
 		fmt.Fprintf(&s, "Raw Signal Peak: 0.0 dBFS")
-		fmt.Fprintf(&s, "\n%s", generateMeter(0.0))
-	case err == nil:
-		fmt.Fprintf(&s, "Raw Signal Peak: %.1f dBFS", PeakLevel)
-		fmt.Fprintf(&s, "\n%s", generateMeter(PeakLevel))
+		fmt.Fprintf(&s, "\nPeak Level     : --- dBFS")
+		fmt.Fprintf(&s, "\n%s", generateMeter(0.0, 0.0))
+	default:
+		fmt.Fprintf(&s, "Raw Signal Peak : %.1f dBFS", m.Level.PeakLevel)
+		fmt.Fprintf(&s, "\nHigh Signal Peak: %.1f dBFS", m.Level.HighPeakLevel)
+		fmt.Fprintf(&s, "\n%s", generateMeter(m.Level.PeakLevel, m.Level.HighPeakLevel))
 	}
 
 	fmt.Fprintf(&s, "\n\n Input: %s", (m.Input.Items[m.Input.Selected].Info.Props.NodeDescription))

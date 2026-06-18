@@ -62,6 +62,7 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case models.LevelMsg:
 		m.Level.PeakLevel = msg.PeakLevel
 		m.Level.RMSLevel = msg.RMSLevel
+		m.Level.HighPeakLevel = msg.HighPeakLevel
 
 	case models.ErrorMsg:
 		m.Error = msg
