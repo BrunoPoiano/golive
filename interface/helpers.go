@@ -48,42 +48,100 @@ func generateMeter(peakLevel, max float64) string {
 	return fmt.Sprintf("%s\n%s\n%s", ruler, live, ruler)
 }
 
-func generateGain(volume float64, maxValue int) string {
+func generateGain(volume models.Volume, maxValue int) string {
 	percent, live := generateVolume(volume)
-	volumePercent := calcVolumePercent(volume)
+	volumePercent := calcVolumePercent(volume.Right)
 
 	live += strings.Repeat("░", ((maxValue / 4) - (volumePercent / 4)))
 	live += percent
 	return fmt.Sprintf("%s", live)
 }
 
-func generateVolume(v float64) (string, string) {
-	volume := calcVolumePercent(v)
+func generateVolume(v models.Volume) (string, string) {
+
+	if v.Left == v.Right {
+		volume := calcVolumePercent(v.Left)
+		switch {
+		case volume > 150:
+			return lipgloss.NewStyle().
+					Foreground(lipgloss.Color(string(models.Danger))).
+					Render(fmt.Sprintf(" [%d%%]", volume)),
+				lipgloss.NewStyle().
+					Foreground(lipgloss.Color(string(models.Danger))).
+					Render(strings.Repeat("█", volume/4))
+
+		case volume > 100:
+			return lipgloss.NewStyle().
+					Foreground(lipgloss.Color(string(models.Attention))).
+					Render(fmt.Sprintf(" [%d%%]", volume)),
+				lipgloss.NewStyle().
+					Foreground(lipgloss.Color(string(models.Attention))).
+					Render(strings.Repeat("█", volume/4))
+		default:
+			return lipgloss.NewStyle().
+					Foreground(lipgloss.Color(string(models.Success))).
+					Render(fmt.Sprintf(" [%d%%]", volume)),
+				lipgloss.NewStyle().
+					Foreground(lipgloss.Color(string(models.Success))).
+					Render(strings.Repeat("█", volume/4))
+		}
+	}
+
+	var rightR, leftR, volume string
+	right := calcVolumePercent(v.Right)
+	left := calcVolumePercent(v.Left)
 
 	switch {
-	case volume > 150:
-		return lipgloss.NewStyle().
-				Foreground(lipgloss.Color(string(models.Danger))).
-				Render(fmt.Sprintf(" [%d%%]", volume)),
-			lipgloss.NewStyle().
-				Foreground(lipgloss.Color(string(models.Danger))).
-				Render(strings.Repeat("█", volume/4))
+	case right > 150:
+		rightR = lipgloss.NewStyle().
+			Foreground(lipgloss.Color(string(models.Danger))).
+			Render(fmt.Sprintf(" [%d%%]", right))
+		volume = lipgloss.NewStyle().
+			Foreground(lipgloss.Color(string(models.Danger))).
+			Render(strings.Repeat("█", right/4))
 
-	case volume > 100:
-		return lipgloss.NewStyle().
-				Foreground(lipgloss.Color(string(models.Attention))).
-				Render(fmt.Sprintf(" [%d%%]", volume)),
-			lipgloss.NewStyle().
-				Foreground(lipgloss.Color(string(models.Attention))).
-				Render(strings.Repeat("█", volume/4))
+	case right > 100:
+		rightR = lipgloss.NewStyle().
+			Foreground(lipgloss.Color(string(models.Attention))).
+			Render(fmt.Sprintf(" [%d%%]", right))
+		volume = lipgloss.NewStyle().
+			Foreground(lipgloss.Color(string(models.Attention))).
+			Render(strings.Repeat("█", right/4))
 	default:
-		return lipgloss.NewStyle().
-				Foreground(lipgloss.Color(string(models.Success))).
-				Render(fmt.Sprintf(" [%d%%]", volume)),
-			lipgloss.NewStyle().
-				Foreground(lipgloss.Color(string(models.Success))).
-				Render(strings.Repeat("█", volume/4))
+		rightR = lipgloss.NewStyle().
+			Foreground(lipgloss.Color(string(models.Success))).
+			Render(fmt.Sprintf(" [%d%%]", right))
+		volume = lipgloss.NewStyle().
+			Foreground(lipgloss.Color(string(models.Success))).
+			Render(strings.Repeat("█", right/4))
 	}
+
+	switch {
+	case left > 150:
+		leftR = lipgloss.NewStyle().
+			Foreground(lipgloss.Color(string(models.Danger))).
+			Render(fmt.Sprintf(" [%d%%]", left))
+		volume = lipgloss.NewStyle().
+			Foreground(lipgloss.Color(string(models.Danger))).
+			Render(strings.Repeat("█", left/4))
+
+	case left > 100:
+		leftR = lipgloss.NewStyle().
+			Foreground(lipgloss.Color(string(models.Attention))).
+			Render(fmt.Sprintf(" [%d%%]", left))
+		volume = lipgloss.NewStyle().
+			Foreground(lipgloss.Color(string(models.Attention))).
+			Render(strings.Repeat("█", left/4))
+	default:
+		leftR = lipgloss.NewStyle().
+			Foreground(lipgloss.Color(string(models.Success))).
+			Render(fmt.Sprintf(" [%d%%]", left))
+		volume = lipgloss.NewStyle().
+			Foreground(lipgloss.Color(string(models.Success))).
+			Render(strings.Repeat("█", left/4))
+	}
+
+	return fmt.Sprintf("%s %s", leftR, rightR), volume
 
 }
 

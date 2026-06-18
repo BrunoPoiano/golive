@@ -31,14 +31,16 @@ func initialModel() MainModel {
 			Input: models.Input{
 				Items: lists.Input.Items,
 				Volume: models.Volume{
-					Value: 1.0,
+					Left:  1.0,
+					Right: 1.0,
 					Mute:  false,
 				},
 			},
 			Output: models.Output{
 				Items: lists.Output.Items,
 				Volume: models.Volume{
-					Value: 1.0,
+					Left:  1.0,
+					Right: 1.0,
 					Mute:  false,
 				},
 			},
@@ -108,58 +110,43 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "m":
 			m.Output.Volume.Mute = !m.Output.Volume.Mute
-			if m.Play.Cmd != nil {
-				id := m.Output.Items[m.Output.Selected].Id
-				go pw.ChangeVolume(id, m.Output.Volume)
-			}
+			go pw.ChangeVolume(m.MainModel, models.StreamOutput)
 		case "n":
 			m.Input.Volume.Mute = !m.Input.Volume.Mute
-			if m.Play.Cmd != nil {
-				id := m.Input.Items[m.Input.Selected].Id
-				go pw.ChangeVolume(id, m.Input.Volume)
-			}
+			go pw.ChangeVolume(m.MainModel, models.StreamInput)
 		// output volume
 		case "left":
-			if m.Output.Volume.Value > 0 {
-				m.Output.Volume.Value = math.Max(0, m.Output.Volume.Value-volumeRate)
+			if m.Output.Volume.Right > 0 && m.Output.Volume.Left > 0 {
+				m.Output.Volume.Right = math.Max(0, m.Output.Volume.Right-volumeRate)
+				m.Output.Volume.Left = math.Max(0, m.Output.Volume.Left-volumeRate)
 			}
-			if m.Play.Cmd != nil {
-				id := m.Output.Items[m.Output.Selected].Id
-				go pw.ChangeVolume(id, m.Output.Volume)
-			}
+			go pw.ChangeVolume(m.MainModel, models.StreamOutput)
 			return m, nil
-
 		// output volume
 		case "right":
-			if m.Output.Volume.Value < maxVolume {
-				m.Output.Volume.Value = math.Min(maxVolume, m.Output.Volume.Value+volumeRate)
+			if m.Output.Volume.Right < maxVolume && m.Output.Volume.Left < maxVolume {
+				m.Output.Volume.Right = math.Min(maxVolume, m.Output.Volume.Right+volumeRate)
+				m.Output.Volume.Left = math.Min(maxVolume, m.Output.Volume.Left+volumeRate)
 			}
-			if m.Play.Cmd != nil {
-				id := m.Output.Items[m.Output.Selected].Id
-				go pw.ChangeVolume(id, m.Output.Volume)
-			}
+			go pw.ChangeVolume(m.MainModel, models.StreamOutput)
 			return m, nil
 
 		// Input Volume
 		case "a":
-			if m.Input.Volume.Value > 0 {
-				m.Input.Volume.Value = math.Max(0, m.Input.Volume.Value-volumeRate)
+			if m.Input.Volume.Right > 0 && m.Input.Volume.Left > 0 {
+				m.Input.Volume.Right = math.Max(0, m.Input.Volume.Right-volumeRate)
+				m.Input.Volume.Left = math.Max(0, m.Input.Volume.Left-volumeRate)
 			}
-			if m.Play.Cmd != nil {
-				id := m.Input.Items[m.Input.Selected].Id
-				go pw.ChangeVolume(id, m.Input.Volume)
-			}
+			go pw.ChangeVolume(m.MainModel, models.StreamInput)
 			return m, nil
 
 		// Input Volume
 		case "d":
-			if m.Input.Volume.Value < maxVolume {
-				m.Input.Volume.Value = math.Min(maxVolume, m.Input.Volume.Value+volumeRate)
+			if m.Input.Volume.Right < maxVolume && m.Input.Volume.Left < maxVolume {
+				m.Input.Volume.Right = math.Min(maxVolume, m.Input.Volume.Right+volumeRate)
+				m.Input.Volume.Left = math.Min(maxVolume, m.Input.Volume.Left+volumeRate)
 			}
-			if m.Play.Cmd != nil {
-				id := m.Input.Items[m.Input.Selected].Id
-				go pw.ChangeVolume(id, m.Input.Volume)
-			}
+			go pw.ChangeVolume(m.MainModel, models.StreamInput)
 			return m, nil
 
 		//Interactions

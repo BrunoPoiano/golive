@@ -56,11 +56,11 @@ func Play(p *tea.Program, m models.MainModel) models.MainModel {
 	}
 
 	go func() {
-		err := ChangeVolume(m.Input.Items[m.Input.Selected].Id, m.Input.Volume)
+		err := ChangeVolume(m, models.StreamInput)
 		if err != nil {
 			p.Send(models.ErrorMsg(err))
 		}
-		err = ChangeVolume(m.Output.Items[m.Output.Selected].Id, m.Output.Volume)
+		err = ChangeVolume(m, models.StreamOutput)
 		if err != nil {
 			p.Send(models.ErrorMsg(err))
 		}
@@ -130,19 +130,31 @@ func KillProcesses(p *tea.Program, m models.MainModel) models.MainModel {
 	return m
 }
 
-func ChangeVolume(id int, volume models.Volume) error {
+func ChangeVolume(m models.MainModel, stream models.TypeStream) error {
+	id := m.Input.Items[m.Input.Selected].Id
+	volume := m.Input.Volume
+
+	if stream == "output" {
+		volume = m.Output.Volume
+	}
 
 	mute := "false"
 	if volume.Mute {
 		mute = "true"
 	}
 
-	volumeCmd := fmt.Sprintf("{ mute: %s, channelVolumes: [ %f, %f ] }", mute, volume.Value, volume.Value)
+	if m.Play.Cmd == nil {
+		return nil
+	}
+
+	volumeCmd := fmt.Sprintf("{ mute: %s, channelVolumes: [ %f, %f ] }", mute, volume.Left, volume.Right)
 	start := exec.Command("pw-cli", "s", strconv.Itoa(id), "Props", volumeCmd)
 	err := start.Start()
+
 	if err != nil {
 		return err
 	}
+
 	return start.Wait()
 }
 
