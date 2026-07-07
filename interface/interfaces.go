@@ -40,18 +40,18 @@ func Playing(m models.MainModel) string {
 	fmt.Fprintf(&s, "\nOutput: %s", (m.Output.Items[m.Output.Selected].Info.Props.NodeDescription))
 
 	//gain
-	fmt.Fprintf(&s, "\n\n Input Gain: (%.1fdb)\n", AmplitudeToDB(m.Input.Volume.Value))
-	s.WriteString(generateGain(m.Input.Volume.Value, 200))
-	fmt.Fprintf(&s, "\nOutput Gain: (%.1fdb)\n", AmplitudeToDB(m.Output.Volume.Value))
-	s.WriteString(generateGain(m.Output.Volume.Value, 200))
+	fmt.Fprintf(&s, "\n\n Input Gain: (%.1fdb)\n", AmplitudeToDB(m.Input.Volume.Left))
+	s.WriteString(generateGain(m.Input.Volume, 200))
+	fmt.Fprintf(&s, "\nOutput Gain: (%.1fdb)\n", AmplitudeToDB(m.Output.Volume.Left))
+	s.WriteString(generateGain(m.Output.Volume, 200))
 
 	return s.String()
 }
 
 func ListItems(m models.MainModel) string {
 
-	inputPercent, _ := generateVolume((m.Input.Volume.Value))
-	outputPercent, _ := generateVolume((m.Output.Volume.Value))
+	inputPercent, _ := generateVolume(m.Input.Volume)
+	outputPercent, _ := generateVolume(m.Output.Volume)
 	var s strings.Builder
 	// s = fmt.Sprintf("debug: %s\n", m.Debug)
 	fmt.Fprintf(&s, "Inputs%s\n", inputPercent)

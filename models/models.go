@@ -44,7 +44,8 @@ type PwDump struct {
 }
 
 type Volume struct {
-	Value float64
+	Left  float64
+	Right float64
 	Mute  bool
 }
 type Level struct {
@@ -65,6 +66,13 @@ type Output struct {
 	Selected int
 	Volume   Volume
 }
+
+type TypeStream string
+
+const (
+	StreamInput  TypeStream = "input"
+	StreamOutput TypeStream = "output"
+)
 
 type PwLinks string
 

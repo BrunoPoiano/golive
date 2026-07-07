@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
+	"main/actions"
 	interfaces "main/interface"
 	"main/models"
 	pw "main/pw_functions"
-	"math"
 	"os"
 
 	tea "charm.land/bubbletea/v2"
@@ -13,8 +13,6 @@ import (
 )
 
 var program *tea.Program
-var maxVolume = 2.0
-var volumeRate = 0.01
 
 type MainModel struct {
 	models.MainModel
@@ -31,14 +29,16 @@ func initialModel() MainModel {
 			Input: models.Input{
 				Items: lists.Input.Items,
 				Volume: models.Volume{
-					Value: 1.0,
+					Left:  1.0,
+					Right: 1.0,
 					Mute:  false,
 				},
 			},
 			Output: models.Output{
 				Items: lists.Output.Items,
 				Volume: models.Volume{
-					Value: 1.0,
+					Left:  1.0,
+					Right: 1.0,
 					Mute:  false,
 				},
 			},
@@ -49,6 +49,19 @@ func initialModel() MainModel {
 func (m MainModel) Init() tea.Cmd {
 
 	return nil
+}
+
+var volumeFunctions = map[string]bool{
+	"m":           true,
+	"n":           true,
+	"left":        true,
+	"shift+left":  true,
+	"right":       true,
+	"shift+right": true,
+	"a":           true,
+	"A":           true,
+	"d":           true,
+	"D":           true,
 }
 
 func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -69,6 +82,12 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// key press actions
 	case tea.KeyPressMsg:
+
+		if volumeFunctions[msg.String()] {
+			m.MainModel = actions.Volume(msg.String(), m.MainModel)
+			return m, nil
+		}
+
 		switch msg.String() {
 
 		//Actions
@@ -103,62 +122,6 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "down", "j":
 			if m.Play.Cmd == nil && m.Cursor < (len(m.Input.Items)-1+len(m.Output.Items)) {
 				m.Cursor++
-			}
-			return m, nil
-
-		case "m":
-			m.Output.Volume.Mute = !m.Output.Volume.Mute
-			if m.Play.Cmd != nil {
-				id := m.Output.Items[m.Output.Selected].Id
-				go pw.ChangeVolume(id, m.Output.Volume)
-			}
-		case "n":
-			m.Input.Volume.Mute = !m.Input.Volume.Mute
-			if m.Play.Cmd != nil {
-				id := m.Input.Items[m.Input.Selected].Id
-				go pw.ChangeVolume(id, m.Input.Volume)
-			}
-		// output volume
-		case "left":
-			if m.Output.Volume.Value > 0 {
-				m.Output.Volume.Value = math.Max(0, m.Output.Volume.Value-volumeRate)
-			}
-			if m.Play.Cmd != nil {
-				id := m.Output.Items[m.Output.Selected].Id
-				go pw.ChangeVolume(id, m.Output.Volume)
-			}
-			return m, nil
-
-		// output volume
-		case "right":
-			if m.Output.Volume.Value < maxVolume {
-				m.Output.Volume.Value = math.Min(maxVolume, m.Output.Volume.Value+volumeRate)
-			}
-			if m.Play.Cmd != nil {
-				id := m.Output.Items[m.Output.Selected].Id
-				go pw.ChangeVolume(id, m.Output.Volume)
-			}
-			return m, nil
-
-		// Input Volume
-		case "a":
-			if m.Input.Volume.Value > 0 {
-				m.Input.Volume.Value = math.Max(0, m.Input.Volume.Value-volumeRate)
-			}
-			if m.Play.Cmd != nil {
-				id := m.Input.Items[m.Input.Selected].Id
-				go pw.ChangeVolume(id, m.Input.Volume)
-			}
-			return m, nil
-
-		// Input Volume
-		case "d":
-			if m.Input.Volume.Value < maxVolume {
-				m.Input.Volume.Value = math.Min(maxVolume, m.Input.Volume.Value+volumeRate)
-			}
-			if m.Play.Cmd != nil {
-				id := m.Input.Items[m.Input.Selected].Id
-				go pw.ChangeVolume(id, m.Input.Volume)
 			}
 			return m, nil
 
