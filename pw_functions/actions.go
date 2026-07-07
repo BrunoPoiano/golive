@@ -101,7 +101,6 @@ func MonitorChannel(p *tea.Program, m models.MainModel) models.MainModel {
 			line := scanner.Text()
 			level.RMSLevel = parseLevels(line, "RMS_level=", level.RMSLevel)
 			level.PeakLevel = parseLevels(line, "Peak_level=", level.PeakLevel)
-
 			if level.PeakLevel > level.HighPeakLevel || level.HighPeakLevel == 0 {
 				level.HighPeakLevel = level.PeakLevel
 			}
@@ -114,7 +113,6 @@ func MonitorChannel(p *tea.Program, m models.MainModel) models.MainModel {
 			p.Send(level)
 		}
 	}()
-
 	return m
 }
 

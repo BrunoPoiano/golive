@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
+	"main/actions"
 	interfaces "main/interface"
 	"main/models"
 	pw "main/pw_functions"
-	"math"
 	"os"
 
 	tea "charm.land/bubbletea/v2"
@@ -13,8 +13,6 @@ import (
 )
 
 var program *tea.Program
-var maxVolume = 2.0
-var volumeRate = 0.01
 
 type MainModel struct {
 	models.MainModel
@@ -53,6 +51,19 @@ func (m MainModel) Init() tea.Cmd {
 	return nil
 }
 
+var volumeFunctions = map[string]bool{
+	"m":           true,
+	"n":           true,
+	"left":        true,
+	"shift+left":  true,
+	"right":       true,
+	"shift+right": true,
+	"a":           true,
+	"A":           true,
+	"d":           true,
+	"D":           true,
+}
+
 func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
@@ -71,6 +82,12 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// key press actions
 	case tea.KeyPressMsg:
+
+		if volumeFunctions[msg.String()] {
+			m.MainModel = actions.Volume(msg.String(), m.MainModel)
+			return m, nil
+		}
+
 		switch msg.String() {
 
 		//Actions
@@ -106,47 +123,6 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.Play.Cmd == nil && m.Cursor < (len(m.Input.Items)-1+len(m.Output.Items)) {
 				m.Cursor++
 			}
-			return m, nil
-
-		case "m":
-			m.Output.Volume.Mute = !m.Output.Volume.Mute
-			go pw.ChangeVolume(m.MainModel, models.StreamOutput)
-		case "n":
-			m.Input.Volume.Mute = !m.Input.Volume.Mute
-			go pw.ChangeVolume(m.MainModel, models.StreamInput)
-		// output volume
-		case "left":
-			if m.Output.Volume.Right > 0 && m.Output.Volume.Left > 0 {
-				m.Output.Volume.Right = math.Max(0, m.Output.Volume.Right-volumeRate)
-				m.Output.Volume.Left = math.Max(0, m.Output.Volume.Left-volumeRate)
-			}
-			go pw.ChangeVolume(m.MainModel, models.StreamOutput)
-			return m, nil
-		// output volume
-		case "right":
-			if m.Output.Volume.Right < maxVolume && m.Output.Volume.Left < maxVolume {
-				m.Output.Volume.Right = math.Min(maxVolume, m.Output.Volume.Right+volumeRate)
-				m.Output.Volume.Left = math.Min(maxVolume, m.Output.Volume.Left+volumeRate)
-			}
-			go pw.ChangeVolume(m.MainModel, models.StreamOutput)
-			return m, nil
-
-		// Input Volume
-		case "a":
-			if m.Input.Volume.Right > 0 && m.Input.Volume.Left > 0 {
-				m.Input.Volume.Right = math.Max(0, m.Input.Volume.Right-volumeRate)
-				m.Input.Volume.Left = math.Max(0, m.Input.Volume.Left-volumeRate)
-			}
-			go pw.ChangeVolume(m.MainModel, models.StreamInput)
-			return m, nil
-
-		// Input Volume
-		case "d":
-			if m.Input.Volume.Right < maxVolume && m.Input.Volume.Left < maxVolume {
-				m.Input.Volume.Right = math.Min(maxVolume, m.Input.Volume.Right+volumeRate)
-				m.Input.Volume.Left = math.Min(maxVolume, m.Input.Volume.Left+volumeRate)
-			}
-			go pw.ChangeVolume(m.MainModel, models.StreamInput)
 			return m, nil
 
 		//Interactions
