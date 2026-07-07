@@ -8,7 +8,7 @@ import (
 	"main/models"
 	"os/exec"
 	"strconv"
-	"strings"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 )
@@ -91,33 +91,29 @@ func MonitorChannel(p *tea.Program, m models.MainModel) models.MainModel {
 
 	m.Level.Action.Cmd.Start()
 	scanner := bufio.NewScanner(output)
-
-	go func() {
-		level := models.LevelMsg{
-			PeakLevel: "0.0",
-			RMSLevel:  "0.0",
-		}
-		for scanner.Scan() {
-			line := scanner.Text()
-			if strings.Contains(line, "RMS_level=") {
-				_, rmsLevel, found := strings.Cut(line, "RMS_level=")
-				if found {
-					level.RMSLevel = rmsLevel
-				}
-			}
-			if strings.Contains(line, "Peak_level=") {
-				_, peakLevel, found := strings.Cut(line, "Peak_level=")
-				if found {
-					level.PeakLevel = peakLevel
-				}
-			}
-			p.Send(models.LevelMsg(level))
-		}
-	}()
-
 	if err := scanner.Err(); err != nil {
 		p.Send(models.ErrorMsg(fmt.Errorf("Error getting level")))
 	}
+
+	level := models.LevelMsg{}
+	go func() {
+		for scanner.Scan() {
+			line := scanner.Text()
+			level.RMSLevel = parseLevels(line, "RMS_level=", level.RMSLevel)
+			level.PeakLevel = parseLevels(line, "Peak_level=", level.PeakLevel)
+
+			if level.PeakLevel > level.HighPeakLevel || level.HighPeakLevel == 0 {
+				level.HighPeakLevel = level.PeakLevel
+			}
+		}
+	}()
+
+	ticker := time.NewTicker(100 * time.Millisecond)
+	go func() {
+		for range ticker.C {
+			p.Send(level)
+		}
+	}()
 
 	return m
 }

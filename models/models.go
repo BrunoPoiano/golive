@@ -6,8 +6,9 @@ import (
 )
 
 type LevelMsg struct {
-	PeakLevel string
-	RMSLevel  string
+	HighPeakLevel float64
+	PeakLevel     float64
+	RMSLevel      float64
 }
 type ErrorMsg error
 
@@ -47,9 +48,10 @@ type Volume struct {
 	Mute  bool
 }
 type Level struct {
-	Action    Action
-	PeakLevel string
-	RMSLevel  string
+	Action        Action
+	PeakLevel     float64
+	RMSLevel      float64
+	HighPeakLevel float64
 }
 
 type Input struct {
