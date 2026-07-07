@@ -114,10 +114,6 @@ func MonitorChannel(p *tea.Program, m models.MainModel) models.MainModel {
 			p.Send(level)
 		}
 	}()
-<<<<<<< HEAD
-
-=======
->>>>>>> volume
 	return m
 }
 
